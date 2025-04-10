@@ -343,9 +343,6 @@ export default {
 					this.$store.dispatch('updateToken', '')
 				}
 			}
-			
-			// Update unread counts after receiving conversations
-			this.emitUnreadCountUpdated()
 		})
 
 		EventBus.on('forbidden-route', (params) => {
