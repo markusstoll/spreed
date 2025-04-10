@@ -21,6 +21,7 @@
 <script>
 import debounce from 'debounce'
 import { provide } from 'vue'
+import { mapGetters } from 'vuex'
 
 import { getCurrentUser } from '@nextcloud/auth'
 import { emit, subscribe, unsubscribe } from '@nextcloud/event-bus'
@@ -44,7 +45,7 @@ import { useDocumentTitle } from './composables/useDocumentTitle.ts'
 import { useHashCheck } from './composables/useHashCheck.js'
 import { useIsInCall } from './composables/useIsInCall.js'
 import { useSessionIssueHandler } from './composables/useSessionIssueHandler.js'
-import { CONVERSATION, PARTICIPANT } from './constants.ts'
+import { CONVERSATION, EVENTS, PARTICIPANT } from './constants.ts'
 import Router from './router/router.ts'
 import BrowserStorage from './services/BrowserStorage.js'
 import { EventBus } from './services/EventBus.ts'
@@ -95,6 +96,30 @@ export default {
 	},
 
 	computed: {
+		// Computed properties for unread counts
+		getTotalUnreadMessages() {
+			if (!this.$store.state.conversationsStore?.conversations) {
+				return 0;
+			}
+			return Object.values(this.$store.state.conversationsStore.conversations).reduce((total, conv) => {
+				return total + (conv.unreadMessages || 0);
+			}, 0);
+		},
+		
+		getTotalUnreadMentions() {
+			if (!this.$store.state.conversationsStore?.conversations) {
+				return 0;
+			}
+			return Object.values(this.$store.state.conversationsStore.conversations).filter(conv => conv.unreadMention).length;
+		},
+		
+		getTotalUnreadMentionsDirect() {
+			if (!this.$store.state.conversationsStore?.conversations) {
+				return 0;
+			}
+			return Object.values(this.$store.state.conversationsStore.conversations).filter(conv => conv.unreadMentionDirect).length;
+		},
+
 		getUserId() {
 			return this.$store.getters.getUserId()
 		},
@@ -162,6 +187,17 @@ export default {
 					toggle?.removeAttribute('data-theme-dark')
 				}
 			}
+		},
+
+		// Watch for changes in unread counters and emit events
+		getTotalUnreadMessages() {
+			this.emitUnreadCountUpdated()
+		},
+		getTotalUnreadMentions() {
+			this.emitUnreadCountUpdated()
+		},
+		getTotalUnreadMentionsDirect() {
+			this.emitUnreadCountUpdated()
 		},
 	},
 
@@ -314,6 +350,9 @@ export default {
 					this.$store.dispatch('updateToken', '')
 				}
 			}
+			
+			// Update unread counts after receiving conversations
+			this.emitUnreadCountUpdated()
 		})
 
 		EventBus.on('forbidden-route', (params) => {
@@ -408,6 +447,9 @@ export default {
 				open: true,
 			})
 		}
+
+		// Initialize unread counts emission
+		this.emitUnreadCountUpdated()
 
 		subscribe('notifications:action:execute', this.interceptNotificationActions)
 		subscribe('notifications:notification:received', this.interceptNotificationReceived)
@@ -618,6 +660,19 @@ export default {
 			if (this.$route.name !== 'root' && !this.isInCall) {
 				this.$router.push({ name: 'root' })
 			}
+		},
+
+		/**
+		 * Emits the UNREAD_COUNT_UPDATED event with the current counter values
+		 */
+		emitUnreadCountUpdated() {
+			const eventData = {
+				totalUnreadMessages: this.getTotalUnreadMessages,
+				totalUnreadMentions: this.getTotalUnreadMentions,
+				totalUnreadMentionsDirect: this.getTotalUnreadMentionsDirect
+			}
+
+			emit(EVENTS.UNREAD_COUNT_UPDATED, eventData)
 		},
 	},
 }
