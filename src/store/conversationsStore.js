@@ -177,6 +177,64 @@ const getters = {
 		return (userId) => getters.conversationsList
 			.find((conversation) => conversation.type === CONVERSATION.TYPE.ONE_TO_ONE && conversation.name === userId)
 	},
+	/**
+	 * Gibt eine Map aller ungelesenen Nachrichten pro Konversation zurück
+	 * @param {object} state Der aktuelle Store-State
+	 * @return {object} Map mit Token als Schlüssel und Unread-Informationen als Werte
+	 */
+	getUnreadMessagesMap: (state) => {
+		const unreadMap = {}
+
+		// Nur nicht-archivierte Konversationen berücksichtigen
+		Object.keys(state.conversations).forEach(token => {
+			const conversation = state.conversations[token]
+			if (conversation.status !== CONVERSATION.STATUS.ARCHIVED) {
+				unreadMap[token] = {
+					unreadMessages: conversation.unreadMessages || 0,
+					unreadMention: conversation.unreadMention || false,
+					unreadMentionDirect: conversation.unreadMentionDirect || false
+				}
+			}
+		})
+		
+		return unreadMap
+	},
+	
+	/**
+	 * Berechnet die Gesamtzahl ungelesener Nachrichten
+	 * @param {object} state Der aktuelle Store-State
+	 * @param {object} getters Die Store-Getter
+	 * @return {number} Gesamtzahl ungelesener Nachrichten
+	 */
+	getTotalUnreadMessages: (state, getters) => {
+		const unreadMap = getters.getUnreadMessagesMap
+
+		return Object.values(unreadMap).reduce((total, entry) => {
+			return total + entry.unreadMessages
+		}, 0)
+	},
+	
+	/**
+	 * Berechnet die Gesamtzahl ungelesener Erwähnungen
+	 * @param {object} state Der aktuelle Store-State
+	 * @param {object} getters Die Store-Getter
+	 * @return {number} Gesamtzahl ungelesener Erwähnungen
+	 */
+	getTotalUnreadMentions: (state, getters) => {
+		const unreadMap = getters.getUnreadMessagesMap
+		return Object.values(unreadMap).filter(entry => entry.unreadMention).length
+	},
+	
+	/**
+	 * Berechnet die Gesamtzahl ungelesener direkter Erwähnungen
+	 * @param {object} state Der aktuelle Store-State
+	 * @param {object} getters Die Store-Getter
+	 * @return {number} Gesamtzahl ungelesener direkter Erwähnungen
+	 */
+	getTotalUnreadMentionsDirect: (state, getters) => {
+		const unreadMap = getters.getUnreadMessagesMap
+		return Object.values(unreadMap).filter(entry => entry.unreadMentionDirect).length
+	}
 }
 
 const mutations = {
