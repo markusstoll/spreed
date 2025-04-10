@@ -21,7 +21,6 @@
 <script>
 import debounce from 'debounce'
 import { provide } from 'vue'
-import { mapGetters } from 'vuex'
 
 import { getCurrentUser } from '@nextcloud/auth'
 import { emit, subscribe, unsubscribe } from '@nextcloud/event-bus'
@@ -45,7 +44,7 @@ import { useDocumentTitle } from './composables/useDocumentTitle.ts'
 import { useHashCheck } from './composables/useHashCheck.js'
 import { useIsInCall } from './composables/useIsInCall.js'
 import { useSessionIssueHandler } from './composables/useSessionIssueHandler.js'
-import { CONVERSATION, EVENTS, PARTICIPANT } from './constants.ts'
+import { CONVERSATION, PARTICIPANT } from './constants.ts'
 import Router from './router/router.ts'
 import BrowserStorage from './services/BrowserStorage.js'
 import { EventBus } from './services/EventBus.ts'
@@ -96,28 +95,22 @@ export default {
 	},
 
 	computed: {
-		// Computed properties for unread counts
 		getTotalUnreadMessages() {
-			if (!this.$store.state.conversationsStore?.conversations) {
-				return 0;
-			}
-			return Object.values(this.$store.state.conversationsStore.conversations).reduce((total, conv) => {
-				return total + (conv.unreadMessages || 0);
+			return this.$store.getters.conversationsList.reduce((total, conversation) => {
+				return total + (conversation.unreadMessages || 0);
 			}, 0);
 		},
 		
 		getTotalUnreadMentions() {
-			if (!this.$store.state.conversationsStore?.conversations) {
-				return 0;
-			}
-			return Object.values(this.$store.state.conversationsStore.conversations).filter(conv => conv.unreadMention).length;
+			return this.$store.getters.conversationsList.filter(conversation => conversation.unreadMention).length;
 		},
 		
 		getTotalUnreadMentionsDirect() {
-			if (!this.$store.state.conversationsStore?.conversations) {
-				return 0;
-			}
-			return Object.values(this.$store.state.conversationsStore.conversations).filter(conv => conv.unreadMentionDirect).length;
+			return this.$store.getters.conversationsList.filter(conversation => conversation.unreadMentionDirect).length;
+		},
+
+		getUnreadConversationCount() {
+			return this.$store.getters.conversationsList.filter(conversation => (conversation.unreadMessages || 0) > 0).length;
 		},
 
 		getUserId() {
@@ -198,7 +191,7 @@ export default {
 		},
 		getTotalUnreadMentionsDirect() {
 			this.emitUnreadCountUpdated()
-		},
+		}
 	},
 
 	beforeCreate() {
@@ -666,13 +659,12 @@ export default {
 		 * Emits the UNREAD_COUNT_UPDATED event with the current counter values
 		 */
 		emitUnreadCountUpdated() {
-			const eventData = {
-				totalUnreadMessages: this.getTotalUnreadMessages,
-				totalUnreadMentions: this.getTotalUnreadMentions,
-				totalUnreadMentionsDirect: this.getTotalUnreadMentionsDirect
-			}
-
-			emit(EVENTS.UNREAD_COUNT_UPDATED, eventData)
+			emit('talk:unread:updated', {
+				conversations: this.getUnreadConversationCount,
+				messages: this.getTotalUnreadMessages,
+				mentions: this.getTotalUnreadMentions,
+				mentionsDirect: this.getTotalUnreadMentionsDirect
+			})
 		},
 	},
 }
