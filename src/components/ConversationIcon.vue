@@ -38,8 +38,8 @@
 			:disable-menu="disableMenu"
 			:display-name="item.displayName"
 			:preloaded-user-status="preloadedUserStatus"
-			:show-user-status="!hideUserStatus"
-			:show-user-status-compact="!showUserOnlineStatus"
+			:hide-status="hideUserStatus"
+			:verbose-status="showUserOnlineStatus"
 			class="conversation-icon__avatar" />
 		<div v-if="showCall" class="overlap-icon">
 			<IconVideo :size="20" :fill-color="'#E9322D'" />
@@ -62,8 +62,8 @@ import IconWeb from 'vue-material-design-icons/Web.vue'
 
 import { t } from '@nextcloud/l10n'
 
-import NcAvatar from '@nextcloud/vue/dist/Components/NcAvatar.js'
-import { useIsDarkTheme } from '@nextcloud/vue/dist/Composables/useIsDarkTheme.js'
+import NcAvatar from '@nextcloud/vue/components/NcAvatar'
+import { useIsDarkTheme } from '@nextcloud/vue/composables/useIsDarkTheme'
 
 import { AVATAR, CONVERSATION } from '../constants.ts'
 import { getConversationAvatarOcsUrl } from '../services/avatarService.ts'

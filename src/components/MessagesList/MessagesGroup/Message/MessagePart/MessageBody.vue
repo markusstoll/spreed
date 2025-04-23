@@ -139,8 +139,8 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
 import moment from '@nextcloud/moment'
 
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcRichText from '@nextcloud/vue/dist/Components/NcRichText.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcRichText from '@nextcloud/vue/components/NcRichText'
 
 import Poll from './Poll.vue'
 import Quote from '../../../../Quote.vue'
@@ -154,6 +154,9 @@ import { parseSpecialSymbols, parseMentions } from '../../../../../utils/textPar
 
 // Regular expression to check for Unicode emojis in message text
 const regex = emojiRegex()
+// Regular expressions to check for task lists in message text like: - [ ], * [ ], + [ ],- [x], - [X]
+const checkboxRegexp = /^\s*[-+*]\s.*\[[\sxX]\]/
+const checkboxCheckedRegexp = /^\s*[-+*]\s.*\[[xX]\]/
 
 export default {
 	name: 'MessageBody',
@@ -406,13 +409,12 @@ export default {
 			let checkBoxIndex = 0
 			const lines = this.message.message.split('\n')
 			for (let i = 0; i < lines.length; i++) {
-				if (lines[i].trim().match(/^- {1,4}\[\s\]/) || lines[i].trim().match(/^- {1,4}\[x\]/)) {
+				if (checkboxRegexp.test(lines[i])) {
 					if (checkBoxIndex === index) {
-						const isChecked = lines[i].includes('[x]')
-						if (isChecked) {
-							lines[i] = lines[i].replace('[x]', '[ ]')
+						if (checkboxCheckedRegexp.test(lines[i])) {
+							lines[i] = lines[i].replace(/\[[xX]\]/, '[ ]')
 						} else {
-							lines[i] = lines[i].replace('[ ]', '[x]')
+							lines[i] = lines[i].replace(/\[\s\]/, '[x]')
 						}
 						break
 					}

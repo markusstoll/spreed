@@ -1281,7 +1281,10 @@ const actions = {
 				})
 			}
 
-			context.dispatch('processMessage', { token, message: response.data.ocs.data })
+			// Own message might have been added already by polling, which is more up-to-date (e.g. reactions)
+			if (!context.state.messages[token]?.[response.data.ocs.data.id]) {
+				context.dispatch('processMessage', { token, message: response.data.ocs.data })
+			}
 
 			return response
 		} catch (error) {
@@ -1291,7 +1294,7 @@ const actions = {
 			context.commit('setCancelPostNewMessage', { messageId: temporaryMessage.id, cancelFunction: null })
 
 			let statusCode = null
-			console.error(`error while submitting message ${error}`, error)
+			console.error('error while submitting message %s', error)
 			if (error.isAxiosError) {
 				statusCode = error?.response?.status
 			}

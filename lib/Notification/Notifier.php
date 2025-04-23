@@ -101,6 +101,7 @@ class Notifier implements INotifier {
 	 * @return string
 	 * @since 17.0.0
 	 */
+	#[\Override]
 	public function getID(): string {
 		return 'talk';
 	}
@@ -111,6 +112,7 @@ class Notifier implements INotifier {
 	 * @return string
 	 * @since 17.0.0
 	 */
+	#[\Override]
 	public function getName(): string {
 		return $this->lFactory->get(Application::APP_ID)->t('Talk');
 	}
@@ -189,6 +191,7 @@ class Notifier implements INotifier {
 	 * @throws UnknownNotificationException
 	 * @since 9.0.0
 	 */
+	#[\Override]
 	public function prepare(INotification $notification, string $languageCode): INotification {
 		if ($notification->getApp() !== Application::APP_ID) {
 			throw new UnknownNotificationException('Incorrect app');
@@ -248,6 +251,10 @@ class Notifier implements INotifier {
 		$notification
 			->setIcon($this->url->getAbsoluteURL($this->url->imagePath(Application::APP_ID, 'app-dark.svg')))
 			->setLink($this->url->linkToRouteAbsolute('spreed.Page.showCall', ['token' => $room->getToken()]));
+
+		if ($participant instanceof Participant && $this->notificationManager->isPreparingPushNotification()) {
+			$notification->setPriorityNotification($participant->getAttendee()->isImportant());
+		}
 
 		$subject = $notification->getSubject();
 		if ($subject === 'record_file_stored' || $subject === 'transcript_file_stored' || $subject === 'transcript_failed' || $subject === 'summary_file_stored' || $subject === 'summary_failed') {
@@ -522,7 +529,7 @@ class Notifier implements INotifier {
 			}
 
 			$message = $this->messageParser->createMessage($room, $participant, $comment, $l);
-			$this->messageParser->parseMessage($message);
+			$this->messageParser->parseMessage($message, true);
 
 			if (!$message->getVisibility()) {
 				throw new AlreadyProcessedException();
@@ -963,33 +970,7 @@ class Notifier implements INotifier {
 		}
 
 		$roomName = $room->getDisplayName($notification->getUser());
-		if ($room->getType() === Room::TYPE_ONE_TO_ONE || $room->getType() === Room::TYPE_ONE_TO_ONE_FORMER) {
-			$subject = $l->t('{user} invited you to a private conversation');
-			if ($this->participantService->hasActiveSessionsInCall($room)) {
-				$notification = $this->addActionButton($notification, 'call_view', $l->t('Join call'), true, true);
-			} else {
-				$notification = $this->addActionButton($notification, 'chat_view', $l->t('View chat'), false);
-			}
-
-			$notification
-				->setParsedSubject(str_replace('{user}', $userDisplayName, $subject))
-				->setRichSubject(
-					$subject, [
-						'user' => [
-							'type' => 'user',
-							'id' => $uid,
-							'name' => $userDisplayName,
-						],
-						'call' => [
-							'type' => 'call',
-							'id' => (string)$room->getId(),
-							'name' => $roomName,
-							'call-type' => $this->getRoomType($room),
-							'icon-url' => $this->avatarService->getAvatarUrl($room),
-						],
-					]
-				);
-		} elseif (\in_array($room->getType(), [Room::TYPE_GROUP, Room::TYPE_PUBLIC], true)) {
+		if (\in_array($room->getType(), [Room::TYPE_GROUP, Room::TYPE_PUBLIC], true)) {
 			$subject = $l->t('{user} invited you to a group conversation: {call}');
 			if ($this->participantService->hasActiveSessionsInCall($room)) {
 				$notification = $this->addActionButton($notification, 'call_view', $l->t('Join call'), true, true);

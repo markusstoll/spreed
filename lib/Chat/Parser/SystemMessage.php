@@ -28,6 +28,7 @@ use OCP\Comments\ICommentsManager;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
 use OCP\Federation\ICloudIdManager;
+use OCP\Files\FileInfo;
 use OCP\Files\InvalidPathException;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
@@ -84,6 +85,7 @@ class SystemMessage implements IEventListener {
 	) {
 	}
 
+	#[\Override]
 	public function handle(Event $event): void {
 		if (!$event instanceof MessageParseEvent) {
 			return;
@@ -91,7 +93,7 @@ class SystemMessage implements IEventListener {
 
 		if ($event->getMessage()->getMessageType() === ChatManager::VERB_SYSTEM) {
 			try {
-				$this->parseMessage($event->getMessage());
+				$this->parseMessage($event->getMessage(), $event->allowInaccurate());
 				// Disabled so we can parse mentions in captions: $event->stopPropagation();
 			} catch (\OutOfBoundsException $e) {
 				// Unknown message, ignore
@@ -110,7 +112,7 @@ class SystemMessage implements IEventListener {
 	 * @param Message $chatMessage
 	 * @throws \OutOfBoundsException
 	 */
-	protected function parseMessage(Message $chatMessage): void {
+	protected function parseMessage(Message $chatMessage, $allowInaccurate): void {
 		$this->l = $chatMessage->getL10n();
 		$comment = $chatMessage->getComment();
 		$room = $chatMessage->getRoom();
@@ -514,7 +516,7 @@ class SystemMessage implements IEventListener {
 			}
 		} elseif ($message === 'file_shared') {
 			try {
-				$parsedParameters['file'] = $this->getFileFromShare($room, $participant, $parameters['share']);
+				$parsedParameters['file'] = $this->getFileFromShare($room, $participant, $parameters['share'], $allowInaccurate);
 				$parsedMessage = '{file}';
 				$metaData = $parameters['metaData'] ?? [];
 				if (isset($metaData['messageType'])) {
@@ -758,18 +760,24 @@ class SystemMessage implements IEventListener {
 	}
 
 	/**
-	 * @param ?Participant $participant
-	 * @param string $shareId
-	 * @return array
 	 * @throws InvalidPathException
 	 * @throws NotFoundException
 	 * @throws ShareNotFound
 	 */
-	protected function getFileFromShare(Room $room, ?Participant $participant, string $shareId): array {
+	protected function getFileFromShare(Room $room, ?Participant $participant, string $shareId, bool $allowInaccurate): array {
 		$share = $this->shareProvider->getShareById((int)$shareId);
 
 		if ($participant && $participant->getAttendee()->getActorType() === Attendee::ACTOR_USERS) {
-			if ($share->getShareOwner() !== $participant->getAttendee()->getActorId()) {
+			if ($allowInaccurate) {
+				$node = $share->getNodeCacheEntry();
+				if ($node === null) {
+					throw new ShareNotFound();
+				}
+
+				$name = $node->getName();
+				$size = $node->getSize();
+				$path = $name;
+			} elseif ($share->getShareOwner() !== $participant->getAttendee()->getActorId()) {
 				$userFolder = $this->rootFolder->getUserFolder($participant->getAttendee()->getActorId());
 				if (!$userFolder instanceof Node) {
 					throw new ShareNotFound();
@@ -813,7 +821,12 @@ class SystemMessage implements IEventListener {
 		} elseif ($participant && $room->getType() !== Room::TYPE_PUBLIC && $participant->getAttendee()->getActorType() === Attendee::ACTOR_FEDERATED_USERS) {
 			throw new ShareNotFound();
 		} else {
-			$node = $share->getNode();
+			if ($allowInaccurate) {
+				$node = $share->getNodeCacheEntry();
+			} else {
+				$node = $share->getNode();
+			}
+
 			$name = $node->getName();
 			$size = $node->getSize();
 			$path = $name;
@@ -824,7 +837,11 @@ class SystemMessage implements IEventListener {
 		}
 
 		$fileId = $node->getId();
-		$isPreviewAvailable = $this->previewManager->isAvailable($node);
+		if ($node instanceof FileInfo) {
+			$isPreviewAvailable = $this->previewManager->isAvailable($node);
+		} else {
+			$isPreviewAvailable = $size > 0 && $this->previewManager->isMimeSupported($node->getMimeType());
+		}
 
 		$data = [
 			'type' => 'file',
@@ -855,7 +872,7 @@ class SystemMessage implements IEventListener {
 			}
 		}
 
-		if ($node->getMimeType() === 'text/vcard') {
+		if ($node instanceof FileInfo && $node->getMimeType() === 'text/vcard') {
 			$vCard = $node->getContent();
 
 			$vObject = Reader::read($vCard);
@@ -1064,6 +1081,16 @@ class SystemMessage implements IEventListener {
 
 	protected function getGuestName(Room $room, string $actorType, string $actorId): string {
 		if ($actorId === Attendee::ACTOR_ID_CLI) {
+			// TRANSLATORS Actor name when a chat message was done by an administration person via the commmand line
+			return $this->l->t('Administration');
+		}
+		if ($actorId === Attendee::ACTOR_ID_SYSTEM) {
+			// TRANSLATORS Actor name when a chat message was done by the system instead of an actual actor
+			return $this->l->t('System');
+		}
+		if ($actorId === Attendee::ACTOR_ID_SAMPLE
+			|| $actorId === Attendee::ACTOR_ID_CHANGELOG) {
+			// Will be set by the Changelog Parser
 			return $this->l->t('Guest');
 		}
 
@@ -1095,7 +1122,7 @@ class SystemMessage implements IEventListener {
 		if ($room->getType() !== Room::TYPE_ONE_TO_ONE) {
 			// Can happen if a user was remove from a one-to-one room.
 			return [
-				$this->l->t('Missed call'),
+				$this->l->t('Unanswered call'),
 				[
 					'user' => [
 						'type' => 'highlight',
@@ -1116,7 +1143,7 @@ class SystemMessage implements IEventListener {
 		}
 
 		return [
-			$this->l->t('Missed call'),
+			$this->l->t('Unanswered call'),
 			[
 				'user' => $this->getUser($other),
 			],

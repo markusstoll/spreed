@@ -27,8 +27,8 @@
 			:menu-container="menuContainer"
 			:disable-tooltip="disableTooltip"
 			:disable-menu="disableMenu"
-			:show-user-status="showUserStatus"
-			:show-user-status-compact="showUserStatusCompact"
+			:hide-status="!showUserStatus"
+			:verbose-status="!showUserStatusCompact"
 			:preloaded-user-status="preloadedUserStatus"
 			:size="size" />
 		<!-- Override user status for federated users -->
@@ -52,9 +52,9 @@ import WebIcon from 'vue-material-design-icons/Web.vue'
 
 import { t } from '@nextcloud/l10n'
 
-import NcAvatar from '@nextcloud/vue/dist/Components/NcAvatar.js'
-import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-import { useIsDarkTheme } from '@nextcloud/vue/dist/Composables/useIsDarkTheme.js'
+import NcAvatar from '@nextcloud/vue/components/NcAvatar'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import { useIsDarkTheme } from '@nextcloud/vue/composables/useIsDarkTheme'
 
 import { ATTENDEE, AVATAR } from '../../constants.ts'
 import { getUserProxyAvatarOcsUrl } from '../../services/avatarService.ts'

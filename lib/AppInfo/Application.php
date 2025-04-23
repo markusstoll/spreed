@@ -65,6 +65,7 @@ use OCA\Talk\Events\ReactionAddedEvent;
 use OCA\Talk\Events\ReactionRemovedEvent;
 use OCA\Talk\Events\RoomCreatedEvent;
 use OCA\Talk\Events\RoomDeletedEvent;
+use OCA\Talk\Events\RoomExtendedEvent;
 use OCA\Talk\Events\RoomModifiedEvent;
 use OCA\Talk\Events\RoomSyncedEvent;
 use OCA\Talk\Events\SessionLeftRoomEvent;
@@ -83,6 +84,7 @@ use OCA\Talk\Files\TemplateLoader as FilesTemplateLoader;
 use OCA\Talk\Flow\RegisterOperationsListener;
 use OCA\Talk\Listener\BeforeUserLoggedOutListener;
 use OCA\Talk\Listener\BotListener;
+use OCA\Talk\Listener\CalDavEventListener;
 use OCA\Talk\Listener\CircleDeletedListener;
 use OCA\Talk\Listener\CircleEditedListener;
 use OCA\Talk\Listener\CircleMembershipListener;
@@ -130,6 +132,8 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Calendar\Events\CalendarObjectCreatedEvent;
+use OCP\Calendar\Events\CalendarObjectUpdatedEvent;
 use OCP\Collaboration\AutoComplete\AutoCompleteFilterEvent;
 use OCP\Collaboration\Resources\IProviderManager;
 use OCP\Collaboration\Resources\LoadAdditionalScriptsEvent;
@@ -170,6 +174,7 @@ class Application extends App implements IBootstrap {
 		parent::__construct(self::APP_ID, $urlParams);
 	}
 
+	#[\Override]
 	public function register(IRegistrationContext $context): void {
 		$context->registerMiddleWare(CanUseTalkMiddleware::class);
 		$context->registerMiddleWare(InjectionMiddleware::class);
@@ -227,6 +232,10 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(MessageParseEvent::class, SystemMessage::class);
 		$context->registerEventListener(MessageParseEvent::class, SystemMessage::class, 9999);
 		$context->registerEventListener(MessageParseEvent::class, UserMention::class, -100);
+
+		// Calendar listeners
+		$context->registerEventListener(CalendarObjectCreatedEvent::class, CalDavEventListener::class);
+		$context->registerEventListener(CalendarObjectUpdatedEvent::class, CalDavEventListener::class);
 
 		// Files integration listeners
 		$context->registerEventListener(BeforeGuestJoinedRoomEvent::class, FilesListener::class);
@@ -313,6 +322,7 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(LobbyModifiedEvent::class, SignalingListener::class);
 		$context->registerEventListener(BeforeRoomSyncedEvent::class, SignalingListener::class);
 		$context->registerEventListener(RoomSyncedEvent::class, SignalingListener::class);
+		$context->registerEventListener(RoomExtendedEvent::class, SignalingListener::class);
 
 		$context->registerEventListener(ChatMessageSentEvent::class, SignalingListener::class);
 		$context->registerEventListener(SystemMessageSentEvent::class, SignalingListener::class);
@@ -363,6 +373,7 @@ class Application extends App implements IBootstrap {
 		$context->registerSetupCheck(BackgroundBlurLoading::class);
 	}
 
+	#[\Override]
 	public function boot(IBootContext $context): void {
 		$context->injectFn([$this, 'registerCollaborationResourceProvider']);
 		$context->injectFn([$this, 'registerClientLinks']);

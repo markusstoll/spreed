@@ -1191,6 +1191,30 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/ocs/v2.php/apps/spreed/api/{apiVersion}/room/{token}/important": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a conversation as important (still sending notifications while on DND)
+         * @description Required capability: `important-conversations`
+         */
+        post: operations["room-mark-conversation-as-important"];
+        /**
+         * Mark a conversation as unimportant (no longer sending notifications while on DND)
+         * @description Required capability: `important-conversations`
+         */
+        delete: operations["room-mark-conversation-as-unimportant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ocs/v2.php/apps/spreed/api/{apiVersion}/room/{token}/notify": {
         parameters: {
             query?: never;
@@ -1867,6 +1891,8 @@ export type components = {
             /** Format: int64 */
             unreadMessages: number;
             isArchived: boolean;
+            /** @description Required capability: `important-conversations` */
+            isImportant: boolean;
         };
         RoomLastMessage: components["schemas"]["ChatMessage"] | components["schemas"]["ChatProxyMessage"];
         RoomWithInvalidInvitations: components["schemas"]["Room"] & {
@@ -5921,6 +5947,8 @@ export interface operations {
                 includeStatus?: 0 | 1;
                 /** @description Filter rooms modified after a timestamp */
                 modifiedSince?: number;
+                /** @description Include the last message, clients should opt-out when only rendering a compact list */
+                includeLastMessage?: 0 | 1;
             };
             header: {
                 /** @description Required to be true for the API request to pass */
@@ -6344,7 +6372,7 @@ export interface operations {
                             meta: components["schemas"]["OCSMeta"];
                             data: {
                                 /** @enum {string} */
-                                error: "type" | "value";
+                                error: "event" | "type" | "value";
                             };
                         };
                     };
@@ -6598,7 +6626,7 @@ export interface operations {
                             meta: components["schemas"]["OCSMeta"];
                             data: {
                                 /** @enum {string} */
-                                error: "type" | "value";
+                                error: "event" | "type" | "value";
                             };
                         };
                     };
@@ -7827,6 +7855,68 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successfully removed room from favorites */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: components["schemas"]["Room"];
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "room-mark-conversation-as-important": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required to be true for the API request to pass */
+                "OCS-APIRequest": boolean;
+            };
+            path: {
+                apiVersion: "v4";
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Conversation was marked as important */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: components["schemas"]["Room"];
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "room-mark-conversation-as-unimportant": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required to be true for the API request to pass */
+                "OCS-APIRequest": boolean;
+            };
+            path: {
+                apiVersion: "v4";
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Conversation was marked as unimportant */
             200: {
                 headers: {
                     [name: string]: unknown;

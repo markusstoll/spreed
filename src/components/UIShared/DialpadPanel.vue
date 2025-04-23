@@ -56,6 +56,7 @@
 			<NcButton v-if="!dialing"
 				class="dial-panel__button"
 				type="tertiary"
+				:aria-label="t('spreed', 'Delete')"
 				@click="handleBackspace">
 				<template #icon>
 					<IconBackspaceOutline :size="20" />
@@ -71,9 +72,9 @@ import IconDialpad from 'vue-material-design-icons/Dialpad.vue'
 
 import { t, getLocale } from '@nextcloud/l10n'
 
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcPopover from '@nextcloud/vue/dist/Components/NcPopover.js'
-import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcPopover from '@nextcloud/vue/components/NcPopover'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 
 import { regionCodes } from '../../regionCodes.js'
 

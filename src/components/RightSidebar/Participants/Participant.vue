@@ -87,6 +87,7 @@
 				<NcButton v-if="canSkipLobby"
 					type="tertiary"
 					:title="t('spreed', 'Move back to lobby')"
+					:aria-label="t('spreed', 'Move back to lobby')"
 					@click="setLobbyPermission(false)">
 					<template #icon>
 						<AccountMinusIcon :size="20" />
@@ -95,6 +96,7 @@
 				<NcButton v-else
 					type="tertiary"
 					:title="t('spreed', 'Move to conversation')"
+					:aria-label="t('spreed', 'Move to conversation')"
 					@click="setLobbyPermission(true)">
 					<template #icon>
 						<AccountPlusIcon :size="20" />
@@ -332,14 +334,14 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { emit } from '@nextcloud/event-bus'
 import { t } from '@nextcloud/l10n'
 
-import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
-import NcActionSeparator from '@nextcloud/vue/dist/Components/NcActionSeparator.js'
-import NcActionText from '@nextcloud/vue/dist/Components/NcActionText.js'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
-import NcDialog from '@nextcloud/vue/dist/Components/NcDialog.js'
-import NcListItem from '@nextcloud/vue/dist/Components/NcListItem.js'
-import NcTextArea from '@nextcloud/vue/dist/Components/NcTextArea.js'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActionSeparator from '@nextcloud/vue/components/NcActionSeparator'
+import NcActionText from '@nextcloud/vue/components/NcActionText'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcListItem from '@nextcloud/vue/components/NcListItem'
+import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 
 import ParticipantPermissionsEditor from './ParticipantPermissionsEditor.vue'
 import AvatarWrapper from '../../AvatarWrapper/AvatarWrapper.vue'
@@ -641,7 +643,7 @@ export default {
 		 */
 		isOffline() {
 			return !this.sessionIds.length && (this.isUserActor || this.isFederatedActor || this.isGuestActor)
-				&& (hasTalkFeature(this.token, 'federation-v2') || !hasTalkFeature(this.token, 'federation-v1') || (!this.conversation.remoteServer && !this.isFederatedActor))
+				&& (hasTalkFeature(this.token, 'federation-v2') || (!this.conversation.remoteServer && !this.isFederatedActor))
 		},
 
 		isModerator() {

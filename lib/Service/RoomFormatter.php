@@ -65,6 +65,7 @@ class RoomFormatter {
 		?array $statuses = null,
 		bool $isSIPBridgeRequest = false,
 		bool $isListingBreakoutRooms = false,
+		bool $skipLastMessage = false,
 	): array {
 		return $this->formatRoomV4(
 			$responseFormat,
@@ -74,6 +75,7 @@ class RoomFormatter {
 			$statuses,
 			$isSIPBridgeRequest,
 			$isListingBreakoutRooms,
+			$skipLastMessage,
 		);
 	}
 
@@ -89,6 +91,7 @@ class RoomFormatter {
 		?array $statuses,
 		bool $isSIPBridgeRequest,
 		bool $isListingBreakoutRooms,
+		bool $skipLastMessage,
 	): array {
 		$roomData = [
 			'id' => $room->getId(),
@@ -142,6 +145,7 @@ class RoomFormatter {
 			'recordingConsent' => $this->talkConfig->recordingConsentRequired() === RecordingService::CONSENT_REQUIRED_OPTIONAL ? $room->getRecordingConsent() : $this->talkConfig->recordingConsentRequired(),
 			'mentionPermissions' => Room::MENTION_PERMISSIONS_EVERYONE,
 			'isArchived' => false,
+			'isImportant' => false,
 		];
 
 		if ($room->isFederatedConversation()) {
@@ -226,6 +230,7 @@ class RoomFormatter {
 			'breakoutRoomStatus' => $room->getBreakoutRoomStatus(),
 			'mentionPermissions' => $room->getMentionPermissions(),
 			'isArchived' => $attendee->isArchived(),
+			'isImportant' => $attendee->isImportant(),
 		]);
 
 		if ($room->isFederatedConversation()) {
@@ -386,7 +391,7 @@ class RoomFormatter {
 			}
 		}
 
-		$lastMessage = $room->getLastMessage();
+		$lastMessage = $skipLastMessage ? null : $room->getLastMessage();
 		if (!$room->isFederatedConversation() && $lastMessage instanceof IComment) {
 			$lastMessageData = $this->formatLastMessage(
 				$responseFormat,
@@ -435,7 +440,7 @@ class RoomFormatter {
 		IComment $lastMessage,
 	): ?array {
 		$message = $this->messageParser->createMessage($room, $participant, $lastMessage, $this->l10n);
-		$this->messageParser->parseMessage($message);
+		$this->messageParser->parseMessage($message, true);
 
 		if (!$message->getVisibility()) {
 			return null;

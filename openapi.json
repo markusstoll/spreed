@@ -1147,7 +1147,8 @@
                     "unreadMention",
                     "unreadMentionDirect",
                     "unreadMessages",
-                    "isArchived"
+                    "isArchived",
+                    "isImportant"
                 ],
                 "properties": {
                     "actorId": {
@@ -1372,6 +1373,10 @@
                     },
                     "isArchived": {
                         "type": "boolean"
+                    },
+                    "isImportant": {
+                        "type": "boolean",
+                        "description": "Required capability: `important-conversations`"
                     }
                 }
             },
@@ -11759,6 +11764,19 @@
                         }
                     },
                     {
+                        "name": "includeLastMessage",
+                        "in": "query",
+                        "description": "Include the last message, clients should opt-out when only rendering a compact list",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "enum": [
+                                0,
+                                1
+                            ]
+                        }
+                    },
+                    {
                         "name": "OCS-APIRequest",
                         "in": "header",
                         "description": "Required to be true for the API request to pass",
@@ -12739,6 +12757,7 @@
                                                         "error": {
                                                             "type": "string",
                                                             "enum": [
+                                                                "event",
                                                                 "type",
                                                                 "value"
                                                             ]
@@ -13388,6 +13407,7 @@
                                                         "error": {
                                                             "type": "string",
                                                             "enum": [
+                                                                "event",
                                                                 "type",
                                                                 "value"
                                                             ]
@@ -16526,6 +16546,170 @@
                 "responses": {
                     "200": {
                         "description": "Successfully removed room from favorites",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Room"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ocs/v2.php/apps/spreed/api/{apiVersion}/room/{token}/important": {
+            "post": {
+                "operationId": "room-mark-conversation-as-important",
+                "summary": "Mark a conversation as important (still sending notifications while on DND)",
+                "description": "Required capability: `important-conversations`",
+                "tags": [
+                    "room"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "apiVersion",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "v4"
+                            ],
+                            "default": "v4"
+                        }
+                    },
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]{4,30}$"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversation was marked as important",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Room"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "room-mark-conversation-as-unimportant",
+                "summary": "Mark a conversation as unimportant (no longer sending notifications while on DND)",
+                "description": "Required capability: `important-conversations`",
+                "tags": [
+                    "room"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "apiVersion",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "v4"
+                            ],
+                            "default": "v4"
+                        }
+                    },
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]{4,30}$"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversation was marked as unimportant",
                         "content": {
                             "application/json": {
                                 "schema": {

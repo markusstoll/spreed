@@ -55,6 +55,7 @@ class Listener implements IEventListener {
 	) {
 	}
 
+	#[\Override]
 	public function handle(Event $event): void {
 		match (get_class($event)) {
 			CallNotificationSendEvent::class => $this->sendCallNotification($event->getRoom(), $event->getActor()?->getAttendee(), $event->getTarget()->getAttendee()),
@@ -73,6 +74,10 @@ class Listener implements IEventListener {
 	 * @param Attendee[] $attendees
 	 */
 	protected function generateInvitation(Room $room, array $attendees): void {
+		if ($room->getType() === Room::TYPE_ONE_TO_ONE) {
+			return;
+		}
+
 		if ($room->getObjectType() === Room::OBJECT_TYPE_FILE) {
 			return;
 		}
@@ -134,6 +139,12 @@ class Listener implements IEventListener {
 	 * Room invitation: "{actor} invited you to {call}"
 	 */
 	protected function markInvitationRead(Room $room, IUser $user): void {
+		if ($room->getType() === Room::TYPE_ONE_TO_ONE
+			|| $room->getType() === Room::TYPE_ONE_TO_ONE_FORMER) {
+			// No notifications for one-to-one, save a query
+			return;
+		}
+
 		$notification = $this->notificationManager->createNotification();
 		try {
 			$notification->setApp(Application::APP_ID)
@@ -274,11 +285,11 @@ class Listener implements IEventListener {
 		}
 
 		$this->preparedCallNotifications = [];
-		$userIds = $this->participantsService->getParticipantUserIdsForCallNotifications($room);
+		$users = $this->participantsService->getParticipantUsersForCallNotifications($room);
 		// Room name depends on the notification user for one-to-one,
 		// so we avoid pre-parsing it there. Also, it comes with some base load,
 		// so we only do it for "big enough" calls.
-		$preparseNotificationForPush = count($userIds) > 10;
+		$preparseNotificationForPush = count($users) > 10;
 		if ($preparseNotificationForPush) {
 			$fallbackLang = $this->serverConfig->getSystemValue('force_language', null);
 			if (is_string($fallbackLang)) {
@@ -287,13 +298,14 @@ class Listener implements IEventListener {
 			} else {
 				$fallbackLang = $this->serverConfig->getSystemValueString('default_language', 'en');
 				/** @psalm-var array<string, string> $userLanguages */
-				$userLanguages = $this->serverConfig->getUserValueForUsers('core', 'lang', $userIds);
+				$userLanguages = $this->serverConfig->getUserValueForUsers('core', 'lang', array_map('strval', array_keys($users)));
 			}
 		}
 
 		$this->connection->beginTransaction();
 		try {
-			foreach ($userIds as $userId) {
+			foreach ($users as $userId => $isImportant) {
+				$userId = (string)$userId;
 				if ($actorId === $userId) {
 					continue;
 				}
@@ -316,6 +328,7 @@ class Listener implements IEventListener {
 
 				try {
 					$userNotification->setUser($userId);
+					$userNotification->setPriorityNotification($isImportant);
 					$this->notificationManager->notify($userNotification);
 				} catch (\InvalidArgumentException $e) {
 					$this->logger->error($e->getMessage(), ['exception' => $e]);
@@ -348,7 +361,8 @@ class Listener implements IEventListener {
 			$notification->setSubject('call', [
 				'callee' => $actor?->getActorId(),
 			])
-				->setDateTime($dateTime);
+				->setDateTime($dateTime)
+				->setPriorityNotification($target->isImportant());
 			$this->notificationManager->notify($notification);
 		} catch (\InvalidArgumentException $e) {
 			$this->logger->error($e->getMessage(), ['exception' => $e]);

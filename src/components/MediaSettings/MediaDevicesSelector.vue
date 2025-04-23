@@ -4,7 +4,8 @@
 -->
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import type { ComponentPublicInstance } from 'vue'
+import { computed } from 'vue'
 
 import IconMicrophone from 'vue-material-design-icons/Microphone.vue'
 import IconRefresh from 'vue-material-design-icons/Refresh.vue'
@@ -13,8 +14,8 @@ import IconVolumeHigh from 'vue-material-design-icons/VolumeHigh.vue'
 
 import { t } from '@nextcloud/l10n'
 
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 
 type NcSelectOption = { id: string | null, label: string }
 type MediaDeviceInfoWithFallbackLabel = MediaDeviceInfo & { fallbackLabel: string }
@@ -41,7 +42,7 @@ const deviceOptions = computed<NcSelectOption[]>(() => ([
 ]))
 const deviceOptionsAvailable = computed(() => deviceOptions.value.length > 1)
 
-const deviceIcon = computed<InstanceType<typeof IconMicrophone> | null>(() => {
+const deviceIcon = computed<ComponentPublicInstance | null>(() => {
 	switch (props.kind) {
 	case 'audioinput': return IconMicrophone
 	case 'audiooutput': return IconVolumeHigh

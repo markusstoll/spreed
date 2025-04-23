@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8795c7bf58e3911b21d70c06e6db58b9",
+    "content-hash": "a2cdd8bb423ad2fc15bc2d52ca37ae61",
     "packages": [
         {
             "name": "bamarni/composer-bin-plugin",
@@ -65,22 +65,26 @@
         },
         {
             "name": "cuyz/valinor",
-            "version": "1.14.4",
+            "version": "1.15.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/CuyZ/Valinor.git",
-                "reference": "c1d2407963408aa8aea0432e8645095283f16a67"
+                "reference": "c3cb63a35bb0c0b1b130117cd8962def1ede9e6f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/CuyZ/Valinor/zipball/c1d2407963408aa8aea0432e8645095283f16a67",
-                "reference": "c1d2407963408aa8aea0432e8645095283f16a67",
+                "url": "https://api.github.com/repos/CuyZ/Valinor/zipball/c3cb63a35bb0c0b1b130117cd8962def1ede9e6f",
+                "reference": "c3cb63a35bb0c0b1b130117cd8962def1ede9e6f",
                 "shasum": ""
             },
             "require": {
                 "composer-runtime-api": "^2.0",
                 "php": "~8.1.0 || ~8.2.0 || ~8.3.0 || ~8.4.0",
                 "psr/simple-cache": "^1.0 || ^2.0 || ^3.0"
+            },
+            "conflict": {
+                "phpstan/phpstan": "<1.0 || >= 3.0",
+                "vimeo/psalm": "<5.0 || >=7.0"
             },
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3.4",
@@ -127,7 +131,7 @@
             ],
             "support": {
                 "issues": "https://github.com/CuyZ/Valinor/issues",
-                "source": "https://github.com/CuyZ/Valinor/tree/1.14.4"
+                "source": "https://github.com/CuyZ/Valinor/tree/1.15.0"
             },
             "funding": [
                 {
@@ -135,7 +139,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-02-23T18:48:29+00:00"
+            "time": "2025-03-30T22:35:46+00:00"
         },
         {
             "name": "cweagans/composer-patches",
@@ -187,16 +191,16 @@
         },
         {
             "name": "firebase/php-jwt",
-            "version": "v6.11.0",
+            "version": "v6.11.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/firebase/php-jwt.git",
-                "reference": "8f718f4dfc9c5d5f0c994cdfd103921b43592712"
+                "reference": "d1e91ecf8c598d073d0995afa8cd5c75c6e19e66"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/firebase/php-jwt/zipball/8f718f4dfc9c5d5f0c994cdfd103921b43592712",
-                "reference": "8f718f4dfc9c5d5f0c994cdfd103921b43592712",
+                "url": "https://api.github.com/repos/firebase/php-jwt/zipball/d1e91ecf8c598d073d0995afa8cd5c75c6e19e66",
+                "reference": "d1e91ecf8c598d073d0995afa8cd5c75c6e19e66",
                 "shasum": ""
             },
             "require": {
@@ -244,9 +248,9 @@
             ],
             "support": {
                 "issues": "https://github.com/firebase/php-jwt/issues",
-                "source": "https://github.com/firebase/php-jwt/tree/v6.11.0"
+                "source": "https://github.com/firebase/php-jwt/tree/v6.11.1"
             },
-            "time": "2025-01-23T05:11:06+00:00"
+            "time": "2025-04-09T20:32:01+00:00"
         },
         {
             "name": "psr/simple-cache",
@@ -307,12 +311,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/nextcloud-deps/ocp.git",
-                "reference": "1abf593d27ecd373a9fcbbe87cfdd899ad3fee8b"
+                "reference": "e09a30f963c393e84de48968fc48cdc2f1a63a5b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nextcloud-deps/ocp/zipball/1abf593d27ecd373a9fcbbe87cfdd899ad3fee8b",
-                "reference": "1abf593d27ecd373a9fcbbe87cfdd899ad3fee8b",
+                "url": "https://api.github.com/repos/nextcloud-deps/ocp/zipball/e09a30f963c393e84de48968fc48cdc2f1a63a5b",
+                "reference": "e09a30f963c393e84de48968fc48cdc2f1a63a5b",
                 "shasum": ""
             },
             "require": {
@@ -348,7 +352,7 @@
                 "issues": "https://github.com/nextcloud-deps/ocp/issues",
                 "source": "https://github.com/nextcloud-deps/ocp/tree/master"
             },
-            "time": "2025-03-08T00:36:29+00:00"
+            "time": "2025-04-18T00:47:59+00:00"
         },
         {
             "name": "psr/clock",

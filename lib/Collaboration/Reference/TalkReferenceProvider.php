@@ -49,6 +49,7 @@ class TalkReferenceProvider extends ADiscoverableReferenceProvider implements IS
 	}
 
 
+	#[\Override]
 	public function matchReference(string $referenceText): bool {
 		return $this->getTalkAppLinkToken($referenceText) !== null;
 	}
@@ -106,6 +107,7 @@ class TalkReferenceProvider extends ADiscoverableReferenceProvider implements IS
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function resolveReference(string $referenceText): ?IReference {
 		if ($this->matchReference($referenceText)) {
 			$reference = new Reference($referenceText);
@@ -171,7 +173,7 @@ class TalkReferenceProvider extends ADiscoverableReferenceProvider implements IS
 					throw new RoomNotFoundException();
 				}
 				$message = $this->messageParser->createMessage($room, $participant, $comment, $this->l);
-				$this->messageParser->parseMessage($message);
+				$this->messageParser->parseMessage($message, true);
 			} else {
 				try {
 					$proxy = $this->proxyCacheMessageMapper->findById($room, (int)$messageId);
@@ -240,6 +242,7 @@ class TalkReferenceProvider extends ADiscoverableReferenceProvider implements IS
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getCachePrefix(string $referenceId): string {
 		$referenceMatch = $this->getTalkAppLinkToken($referenceId);
 		if ($referenceMatch === null) {
@@ -252,6 +255,7 @@ class TalkReferenceProvider extends ADiscoverableReferenceProvider implements IS
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getCacheKey(string $referenceId): ?string {
 		$referenceMatch = $this->getTalkAppLinkToken($referenceId);
 		if ($referenceMatch === null) {
@@ -278,6 +282,7 @@ class TalkReferenceProvider extends ADiscoverableReferenceProvider implements IS
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getId(): string {
 		return Application::APP_ID;
 	}
@@ -285,6 +290,7 @@ class TalkReferenceProvider extends ADiscoverableReferenceProvider implements IS
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getTitle(): string {
 		return $this->l->t('Talk conversations');
 	}
@@ -292,6 +298,7 @@ class TalkReferenceProvider extends ADiscoverableReferenceProvider implements IS
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getOrder(): int {
 		return 0;
 	}
@@ -299,10 +306,12 @@ class TalkReferenceProvider extends ADiscoverableReferenceProvider implements IS
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getIconUrl(): string {
 		return $this->urlGenerator->imagePath(Application::APP_ID, 'app-dark.svg');
 	}
 
+	#[\Override]
 	public function getSupportedSearchProviderIds(): array {
 		return ['talk-conversations'];
 	}

@@ -26,6 +26,7 @@ use OCA\Talk\Events\RoomDeletedEvent;
 use OCA\Talk\Events\RoomModifiedEvent;
 use OCA\Talk\Events\RoomPasswordVerifyEvent;
 use OCA\Talk\Events\RoomSyncedEvent;
+use OCA\Talk\Exceptions\InvalidRoomException;
 use OCA\Talk\Exceptions\RoomNotFoundException;
 use OCA\Talk\Exceptions\RoomProperty\AvatarException;
 use OCA\Talk\Exceptions\RoomProperty\BreakoutRoomModeException;
@@ -53,6 +54,7 @@ use OCA\Talk\Room;
 use OCA\Talk\Webinary;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJobList;
+use OCP\Calendar\IManager;
 use OCP\Comments\IComment;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\EventDispatcher\IEventDispatcher;
@@ -85,6 +87,7 @@ class RoomService {
 		protected EmojiService $emojiService,
 		protected LoggerInterface $logger,
 		protected IL10N $l10n,
+		protected IManager $calendarManager,
 	) {
 	}
 
@@ -102,7 +105,7 @@ class RoomService {
 		try {
 			// If room exists: Reuse that one, otherwise create a new one.
 			$room = $this->manager->getOne2OneRoom($actor->getUID(), $targetUser->getUID());
-			$this->participantService->ensureOneToOneRoomIsFilled($room);
+			$this->participantService->ensureOneToOneRoomIsFilled($room, $actor->getUID());
 		} catch (RoomNotFoundException) {
 			if (!$this->shareManager->currentUserCanEnumerateTargetUser($actor, $targetUser)) {
 				throw new RoomNotFoundException();
@@ -117,12 +120,6 @@ class RoomService {
 					'actorType' => Attendee::ACTOR_USERS,
 					'actorId' => $actor->getUID(),
 					'displayName' => $actor->getDisplayName(),
-					'participantType' => Participant::OWNER,
-				],
-				[
-					'actorType' => Attendee::ACTOR_USERS,
-					'actorId' => $targetUser->getUID(),
-					'displayName' => $targetUser->getDisplayName(),
 					'participantType' => Participant::OWNER,
 				],
 			], $actor);
@@ -188,6 +185,7 @@ class RoomService {
 			'',
 			Room::OBJECT_TYPE_PHONE,
 			Room::OBJECT_TYPE_EVENT,
+			Room::OBJECT_TYPE_EXTENDED_CONVERSATION,
 		];
 		if ($allowInternalTypes) {
 			$objectTypes[] = BreakoutRoom::PARENT_OBJECT_TYPE;
@@ -1428,5 +1426,51 @@ class RoomService {
 		if ($room->getObjectType() === BreakoutRoom::PARENT_OBJECT_TYPE) {
 			throw new TypeException(TypeException::REASON_BREAKOUT_ROOM);
 		}
+	}
+
+	public function resetObject(Room $room): void {
+		$update = $this->db->getQueryBuilder();
+		$update->update('talk_rooms')
+			->set('object_type', $update->createNamedParameter('', IQueryBuilder::PARAM_STR))
+			->set('object_id', $update->createNamedParameter('', IQueryBuilder::PARAM_STR))
+			->where($update->expr()->eq('id', $update->createNamedParameter($room->getId(), IQueryBuilder::PARAM_INT)));
+		$update->executeStatement();
+
+		$room->setObjectId('');
+		$room->setObjectType('');
+	}
+
+	public function setObject(Room $room, string $objectId = '', string $objectType = ''): void {
+		if (($objectId !== '' && $objectType === '') || ($objectId === '' && $objectType !== '')) {
+			throw new InvalidRoomException('Object ID and Object Type must both be empty or both have values');
+		}
+		$update = $this->db->getQueryBuilder();
+		$update->update('talk_rooms')
+			->set('object_id', $update->createNamedParameter($objectId, IQueryBuilder::PARAM_STR))
+			->set('object_type', $update->createNamedParameter($objectType, IQueryBuilder::PARAM_STR))
+			->where($update->expr()->eq('id', $update->createNamedParameter($room->getId(), IQueryBuilder::PARAM_INT)));
+		$update->executeStatement();
+
+		$room->setObjectId($objectId);
+		$room->setObjectType($objectType);
+	}
+
+	public function hasExistingCalendarEvents(Room $room, string $userId, string $eventUid) : bool {
+		$calendars = $this->calendarManager->getCalendarsForPrincipal('principals/users/' . $userId);
+		if (!empty($calendars)) {
+			$searchProperties = ['LOCATION'];
+			foreach ($calendars as $calendar) {
+				$searchResult = $calendar->search($room->getToken(), $searchProperties, [], 2);
+				foreach ($searchResult as $result) {
+					foreach ($result['objects'] as $object) {
+						if ($object['UID'][0] !== $eventUid) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 }

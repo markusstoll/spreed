@@ -8,6 +8,9 @@ on:
   schedule:
     - cron: "5 4 * * 0"
 
+permissions:
+  contents: read
+
 jobs:
   update-nextcloud-openapi:
     runs-on: ubuntu-latest
@@ -52,7 +55,7 @@ jobs:
 
       - name: Set up node ${{ steps.versions.outputs.nodeVersion }}
         if: steps.checkout.outcome == 'success'
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ steps.versions.outputs.nodeVersion }}
 
@@ -72,7 +75,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.checkout.outcome == 'success'
-        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
         with:
           path: apps/${{ env.APP_NAME }}
           token: ${{ secrets.COMMAND_BOT_PAT }}

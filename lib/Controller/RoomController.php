@@ -13,6 +13,7 @@ use OCA\Talk\Capabilities;
 use OCA\Talk\Config;
 use OCA\Talk\Events\AAttendeeRemovedEvent;
 use OCA\Talk\Events\BeforeRoomsFetchEvent;
+use OCA\Talk\Events\RoomExtendedEvent;
 use OCA\Talk\Exceptions\CannotReachRemoteException;
 use OCA\Talk\Exceptions\FederationRestrictionException;
 use OCA\Talk\Exceptions\ForbiddenException;
@@ -64,6 +65,7 @@ use OCA\Talk\Service\RecordingService;
 use OCA\Talk\Service\RoomFormatter;
 use OCA\Talk\Service\RoomService;
 use OCA\Talk\Service\SessionService;
+use OCA\Talk\Share\Helper\Preloader;
 use OCA\Talk\TalkSession;
 use OCA\Talk\Webinary;
 use OCP\App\IAppManager;
@@ -75,6 +77,7 @@ use OCP\AppFramework\Http\Attribute\PublicPage;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Services\IAppConfig;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\Calendar\CalendarEventStatus;
 use OCP\Calendar\Exceptions\CalendarException;
 use OCP\Calendar\ICreateFromString;
 use OCP\Calendar\IManager as ICalendarManager;
@@ -127,6 +130,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 		protected ITimeFactory $timeFactory,
 		protected ChecksumVerificationService $checksumVerificationService,
 		protected RoomFormatter $roomFormatter,
+		protected Preloader $sharePreloader,
 		protected IConfig $config,
 		protected IAppConfig $appConfig,
 		protected Config $talkConfig,
@@ -194,13 +198,14 @@ class RoomController extends AEnvironmentAwareOCSController {
 	 * @param 0|1 $noStatusUpdate When the user status should not be automatically set to online set to 1 (default 0)
 	 * @param bool $includeStatus Include the user status
 	 * @param int $modifiedSince Filter rooms modified after a timestamp
+	 * @param bool $includeLastMessage Include the last message, clients should opt-out when only rendering a compact list
 	 * @psalm-param non-negative-int $modifiedSince
 	 * @return DataResponse<Http::STATUS_OK, list<TalkRoom>, array{X-Nextcloud-Talk-Hash: string, X-Nextcloud-Talk-Modified-Before: numeric-string, X-Nextcloud-Talk-Federation-Invites?: numeric-string}>
 	 *
 	 * 200: Return list of rooms
 	 */
 	#[NoAdminRequired]
-	public function getRooms(int $noStatusUpdate = 0, bool $includeStatus = false, int $modifiedSince = 0): DataResponse {
+	public function getRooms(int $noStatusUpdate = 0, bool $includeStatus = false, int $modifiedSince = 0, bool $includeLastMessage = true): DataResponse {
 		$nextModifiedSince = $this->timeFactory->getTime();
 
 		$event = new BeforeRoomsFetchEvent($this->userId);
@@ -225,7 +230,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 		}
 
 		$sessionIds = $this->session->getAllActiveSessions();
-		$rooms = $this->manager->getRoomsForUser($this->userId, $sessionIds, true);
+		$rooms = $this->manager->getRoomsForUser($this->userId, $sessionIds, $includeLastMessage);
 
 		if ($modifiedSince !== 0) {
 			$rooms = array_filter($rooms, function (Room $room) use ($includeStatus, $modifiedSince): bool {
@@ -275,10 +280,15 @@ class RoomController extends AEnvironmentAwareOCSController {
 			$statuses = $this->statusManager->getUserStatuses($userIds);
 		}
 
+		if ($includeLastMessage) {
+			$lastMessages = array_filter(array_map(static fn (Room $room) => $room->getLastMessage()?->getVerb() === 'object_shared' ? $room->getLastMessage() : null, $rooms));
+			$this->sharePreloader->preloadShares($lastMessages);
+		}
+
 		$return = [];
 		foreach ($rooms as $room) {
 			try {
-				$return[] = $this->formatRoom($room, $this->participantService->getParticipant($room, $this->userId), $statuses);
+				$return[] = $this->formatRoom($room, $this->participantService->getParticipant($room, $this->userId), $statuses, skipLastMessage: !$includeLastMessage);
 			} catch (ParticipantNotFoundException $e) {
 				// for example in case the room was deleted concurrently,
 				// the user is not a participant anymore
@@ -314,7 +324,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 
 		$return = [];
 		foreach ($rooms as $room) {
-			$return[] = $this->formatRoom($room, null);
+			$return[] = $this->formatRoom($room, null, skipLastMessage: true);
 		}
 
 		return new DataResponse($return, Http::STATUS_OK);
@@ -348,7 +358,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 				$participant = null;
 			}
 
-			$return[] = $this->formatRoom($room, $participant, null, false, true);
+			$return[] = $this->formatRoom($room, $participant, null, false, true, true);
 		}
 
 
@@ -498,7 +508,14 @@ class RoomController extends AEnvironmentAwareOCSController {
 	/**
 	 * @return TalkRoom
 	 */
-	protected function formatRoom(Room $room, ?Participant $currentParticipant, ?array $statuses = null, bool $isSIPBridgeRequest = false, bool $isListingBreakoutRooms = false, array $remoteRoomData = []): array {
+	protected function formatRoom(
+		Room $room,
+		?Participant $currentParticipant,
+		?array $statuses = null,
+		bool $isSIPBridgeRequest = false,
+		bool $isListingBreakoutRooms = false,
+		bool $skipLastMessage = false,
+	): array {
 		return $this->roomFormatter->formatRoom(
 			$this->getResponseFormat(),
 			$this->commonReadMessages,
@@ -507,6 +524,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 			$statuses,
 			$isSIPBridgeRequest,
 			$isListingBreakoutRooms,
+			$skipLastMessage,
 		);
 	}
 
@@ -597,6 +615,16 @@ class RoomController extends AEnvironmentAwareOCSController {
 		/** @var IUser $user */
 		$user = $this->userManager->get($this->userId);
 
+		/** @var ?Room $oldRoom */
+		$oldRoom = null;
+		if ($objectType === Room::OBJECT_TYPE_EXTENDED_CONVERSATION && $objectId !== '') {
+			try {
+				$oldRoom = $this->manager->getRoomForUserByToken($objectId, $this->userId);
+			} catch (RoomNotFoundException) {
+				return new DataResponse(['error' => CreationException::REASON_OBJECT], Http::STATUS_BAD_REQUEST);
+			}
+		}
+
 		if ($this->talkConfig->isNotAllowedToCreateConversations($user)) {
 			return new DataResponse(['error' => 'permissions'], Http::STATUS_FORBIDDEN);
 		}
@@ -679,6 +707,11 @@ class RoomController extends AEnvironmentAwareOCSController {
 			$this->participantService->addInvitationList($room, $invitationList, $user);
 		}
 
+		if ($objectType === Room::OBJECT_TYPE_EXTENDED_CONVERSATION) {
+			$event = new RoomExtendedEvent($oldRoom, $room);
+			$this->dispatcher->dispatchTyped($event);
+		}
+
 		if (!$invitationList->hasInvalidInvitations()) {
 			return new DataResponse($this->formatRoom($room, $this->participantService->getParticipant($room, $this->userId, false)), Http::STATUS_CREATED);
 		}
@@ -716,7 +749,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 			// We are only doing this manually here to be able to return different status codes
 			// Actually createOneToOneConversation also checks it.
 			$room = $this->manager->getOne2OneRoom($currentUser->getUID(), $targetUser->getUID());
-			$this->participantService->ensureOneToOneRoomIsFilled($room);
+			$this->participantService->ensureOneToOneRoomIsFilled($room, $currentUser->getUID());
 			return new DataResponse(
 				$this->formatRoom($room, $this->participantService->getParticipant($room, $currentUser->getUID(), false)),
 				Http::STATUS_OK
@@ -817,7 +850,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	 * Rename a room
 	 *
 	 * @param string $roomName New name
-	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{error: 'type'|'value'}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{error: 'event'|'type'|'value'}, array{}>
 	 *
 	 * 200: Room renamed successfully
 	 * 400: Renaming room is not possible
@@ -825,6 +858,10 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[PublicPage]
 	#[RequireModeratorParticipant]
 	public function renameRoom(string $roomName): DataResponse {
+		if ($this->room->getObjectType() === Room::OBJECT_TYPE_EVENT) {
+			return new DataResponse(['error' => Room::OBJECT_TYPE_EVENT], Http::STATUS_BAD_REQUEST);
+		}
+
 		try {
 			$this->roomService->setName($this->room, $roomName, validateType: true);
 		} catch (NameException $e) {
@@ -837,7 +874,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	 * Update the description of a room
 	 *
 	 * @param string $description New description for the conversation (limited to 2.000 characters, was 500 before Talk 21)
-	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{error: 'type'|'value'}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{error: 'event'|'type'|'value'}, array{}>
 	 *
 	 * 200: Description updated successfully
 	 * 400: Updating description is not possible
@@ -845,6 +882,10 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[PublicPage]
 	#[RequireModeratorParticipant]
 	public function setDescription(string $description): DataResponse {
+		if ($this->room->getObjectType() === Room::OBJECT_TYPE_EVENT) {
+			return new DataResponse(['error' => Room::OBJECT_TYPE_EVENT], Http::STATUS_BAD_REQUEST);
+		}
+
 		try {
 			$this->roomService->setDescription($this->room, $description);
 		} catch (DescriptionException $e) {
@@ -1641,6 +1682,40 @@ class RoomController extends AEnvironmentAwareOCSController {
 	}
 
 	/**
+	 * Mark a conversation as important (still sending notifications while on DND)
+	 *
+	 * Required capability: `important-conversations`
+	 *
+	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>
+	 *
+	 * 200: Conversation was marked as important
+	 */
+	#[NoAdminRequired]
+	#[FederationSupported]
+	#[RequireLoggedInParticipant]
+	public function markConversationAsImportant(): DataResponse {
+		$this->participantService->markConversationAsImportant($this->participant);
+		return new DataResponse($this->formatRoom($this->room, $this->participant));
+	}
+
+	/**
+	 * Mark a conversation as unimportant (no longer sending notifications while on DND)
+	 *
+	 * Required capability: `important-conversations`
+	 *
+	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>
+	 *
+	 * 200: Conversation was marked as unimportant
+	 */
+	#[NoAdminRequired]
+	#[FederationSupported]
+	#[RequireLoggedInParticipant]
+	public function markConversationAsUnimportant(): DataResponse {
+		$this->participantService->markConversationAsUnimportant($this->participant);
+		return new DataResponse($this->formatRoom($this->room, $this->participant));
+	}
+
+	/**
 	 * Join a room
 	 *
 	 * @param string $token Token of the room
@@ -1713,7 +1788,8 @@ class RoomController extends AEnvironmentAwareOCSController {
 		$authenticatedEmailGuest = $this->session->getAuthedEmailActorIdForRoom($token);
 
 		$headers = [];
-		if ($authenticatedEmailGuest !== null || $room->isFederatedConversation()) {
+		if ($authenticatedEmailGuest !== null || $room->isFederatedConversation()
+			|| ($previousParticipant instanceof Participant && $previousParticipant->isGuest())) {
 			// Skip password checking
 			$result = [
 				'result' => true,
@@ -1878,7 +1954,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 			return new DataResponse(null, Http::STATUS_NOT_FOUND);
 		}
 
-		return new DataResponse($this->formatRoom($this->room, $participant));
+		return new DataResponse($this->formatRoom($this->room, $participant, skipLastMessage: true));
 	}
 
 	/**
@@ -1929,7 +2005,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 			return new DataResponse(null, Http::STATUS_BAD_REQUEST);
 		}
 
-		return new DataResponse($this->formatRoom($this->room, $participant));
+		return new DataResponse($this->formatRoom($this->room, $participant, skipLastMessage: true));
 	}
 
 	/**
@@ -1964,7 +2040,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 
 		$participant = $this->participantService->joinRoomAsNewGuest($this->roomService, $this->room, '', true);
 
-		return new DataResponse($this->formatRoom($this->room, $participant));
+		return new DataResponse($this->formatRoom($this->room, $participant, skipLastMessage: true));
 	}
 
 	/**
@@ -2634,6 +2710,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 		$eventBuilder->setOrganizer($user->getEMailAddress(), $user->getDisplayName() ?: $this->userId);
 		$eventBuilder->setStartDate($startDate);
 		$eventBuilder->setEndDate($endDate);
+		$eventBuilder->setStatus(CalendarEventStatus::CONFIRMED);
 
 		$userAttendees = $this->participantService->getParticipantsByActorType($this->room, Attendee::ACTOR_USERS);
 		foreach ($userAttendees as $userAttendee) {
@@ -2646,6 +2723,10 @@ class RoomController extends AEnvironmentAwareOCSController {
 				continue;
 			}
 			if ($targetUser->getEMailAddress() === null) {
+				continue;
+			}
+			// Do not add the organizer as an attendee
+			if ($targetUser->getEMailAddress() === $user->getEMailAddress()) {
 				continue;
 			}
 

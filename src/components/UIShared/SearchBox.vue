@@ -28,7 +28,7 @@ import IconMagnify from 'vue-material-design-icons/Magnify.vue'
 
 import { t } from '@nextcloud/l10n'
 
-import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
+import NcTextField from '@nextcloud/vue/components/NcTextField'
 
 export default {
 	name: 'SearchBox',
@@ -62,7 +62,7 @@ export default {
 		 * Conversations list reference for handling click trigger
 		 */
 		listRef: {
-			type: Object,
+			type: Array,
 			default: null,
 		},
 
@@ -165,7 +165,7 @@ export default {
 			}
 
 			// Blur triggered by clicking on a conversation item
-			if (this.listRef && this.listRef.$el.contains(event.relatedTarget)) {
+			if (this.listRef?.length && this.listRef.some(list => list?.$el?.contains(event.relatedTarget))) {
 				return
 			}
 

@@ -24,6 +24,7 @@
 		<template v-if="!showSearchMessagesTab && getUserId" #secondary-actions>
 			<NcActionButton type="tertiary"
 				:title="t('spreed', 'Search messages')"
+				:aria-label="t('spreed', 'Search messages')"
 				@click="handleShowSearch(true)">
 				<template #icon>
 					<IconMagnify :size="20" />
@@ -33,6 +34,7 @@
 		<template v-else-if="getUserId" #tertiary-actions>
 			<NcButton type="tertiary"
 				:title="t('spreed', 'Back')"
+				:aria-label="t('spreed', 'Back')"
 				@click="handleShowSearch(false)">
 				<template #icon>
 					<IconArrowLeft class="bidirectional-icon" :size="20" />
@@ -139,10 +141,10 @@ import { showMessage } from '@nextcloud/dialogs'
 import { emit, subscribe, unsubscribe } from '@nextcloud/event-bus'
 import { t } from '@nextcloud/l10n'
 
-import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
-import NcAppSidebar from '@nextcloud/vue/dist/Components/NcAppSidebar.js'
-import NcAppSidebarTab from '@nextcloud/vue/dist/Components/NcAppSidebarTab.js'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcAppSidebar from '@nextcloud/vue/components/NcAppSidebar'
+import NcAppSidebarTab from '@nextcloud/vue/components/NcAppSidebarTab'
+import NcButton from '@nextcloud/vue/components/NcButton'
 
 import BreakoutRoomsTab from './BreakoutRooms/BreakoutRoomsTab.vue'
 import InternalSignalingHint from './InternalSignalingHint.vue'
@@ -157,6 +159,8 @@ import SetGuestUsername from '../SetGuestUsername.vue'
 import { CONVERSATION, WEBINAR, PARTICIPANT } from '../../constants.ts'
 import { hasTalkFeature } from '../../services/CapabilitiesManager.ts'
 import { useSidebarStore } from '../../stores/sidebar.ts'
+
+const supportConversationCreationAll = hasTalkFeature('local', 'conversation-creation-all')
 
 export default {
 	name: 'RightSidebar',
@@ -246,8 +250,9 @@ export default {
 		},
 
 		canSearchParticipants() {
-			return (this.conversation.type === CONVERSATION.TYPE.GROUP
-				|| (this.conversation.type === CONVERSATION.TYPE.PUBLIC && this.conversation.objectType !== CONVERSATION.OBJECT_TYPE.VIDEO_VERIFICATION))
+			return this.conversation.type === CONVERSATION.TYPE.GROUP
+				|| (this.conversation.type === CONVERSATION.TYPE.PUBLIC && this.conversation.objectType !== CONVERSATION.OBJECT_TYPE.VIDEO_VERIFICATION)
+				|| (this.conversation.type === CONVERSATION.TYPE.ONE_TO_ONE && supportConversationCreationAll)
 		},
 
 		participantType() {
@@ -289,13 +294,9 @@ export default {
 			return this.conversation.breakoutRoomMode !== CONVERSATION.BREAKOUT_ROOM_MODE.NOT_CONFIGURED
 		},
 
-		supportFederationV1() {
-			return hasTalkFeature(this.token, 'federation-v1')
-		},
-
 		showBreakoutRoomsTab() {
 			return this.getUserId && !this.isOneToOne
-				&& (!this.supportFederationV1 || !this.conversation.remoteServer)
+				&& !this.conversation.remoteServer // no breakout rooms support in federated conversations
 				&& (this.breakoutRoomsConfigured || this.conversation.breakoutRoomMode === CONVERSATION.BREAKOUT_ROOM_MODE.FREE || this.conversation.objectType === CONVERSATION.OBJECT_TYPE.BREAKOUT_ROOM)
 		},
 
@@ -304,7 +305,7 @@ export default {
 		},
 
 		showSharedItemsTab() {
-			return this.getUserId && (!this.supportFederationV1 || !this.conversation.remoteServer)
+			return this.getUserId && !this.conversation.remoteServer // no attachments support in federated conversations
 		},
 
 		showDetailsTab() {

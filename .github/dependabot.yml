@@ -81,6 +81,18 @@ updates:
     time: "03:00"
     timezone: Europe/Berlin
 
+# GitHub Actions
+- package-ecosystem: "github-actions"
+  directory: ".github/workflows"
+  commit-message:
+    prefix: "ci"
+    include: "scope"
+  schedule:
+    interval: weekly
+    day: saturday
+    time: "03:00"
+    timezone: Europe/Berlin
+
 # NPM: Code-Dependencies
 - package-ecosystem: npm
   directory: "/"

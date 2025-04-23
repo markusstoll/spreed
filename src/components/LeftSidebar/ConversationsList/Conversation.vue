@@ -39,8 +39,19 @@
 			<span class="text"> {{ item.displayName }} </span>
 		</template>
 		<template v-if="!compact" #subname>
-			<!-- eslint-disable-next-line vue/no-v-html -->
-			<span v-html="conversationInformation" />
+			<span class="conversation__subname" :title="conversationInformation.title">
+				<span v-if="conversationInformation.actor"
+					class="conversation__subname-actor">
+					{{ conversationInformation.actor }}
+				</span>
+				<component :is="conversationInformation.icon"
+					v-if="conversationInformation.icon"
+					class="conversation__subname-icon"
+					:size="16" />
+				<span class="conversation__subname-message">
+					{{ conversationInformation.message }}
+				</span>
+			</span>
 		</template>
 		<template v-if="!isSearchResult" #actions>
 			<template v-if="submenu === null">
@@ -140,16 +151,18 @@
 					{{ level.label }}
 				</NcActionButton>
 
-				<NcActionSeparator />
+				<template v-if="showCallNotificationSettings">
+					<NcActionSeparator />
 
-				<NcActionButton type="checkbox"
-					:model-value="notificationCalls"
-					@click="setNotificationCalls(!notificationCalls)">
-					<template #icon>
-						<IconPhoneRing :size="16" />
-					</template>
-					{{ t('spreed', 'Notify about calls') }}
-				</NcActionButton>
+					<NcActionButton type="checkbox"
+						:model-value="notificationCalls"
+						@click="setNotificationCalls(!notificationCalls)">
+						<template #icon>
+							<IconPhoneRing :size="16" />
+						</template>
+						{{ t('spreed', 'Notify about calls') }}
+					</NcActionButton>
+				</template>
 			</template>
 		</template>
 
@@ -236,15 +249,15 @@ import { showError } from '@nextcloud/dialogs'
 import { emit } from '@nextcloud/event-bus'
 import { t } from '@nextcloud/l10n'
 
-import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
-import NcActionSeparator from '@nextcloud/vue/dist/Components/NcActionSeparator.js'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcDialog from '@nextcloud/vue/dist/Components/NcDialog.js'
-import NcListItem from '@nextcloud/vue/dist/Components/NcListItem.js'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActionSeparator from '@nextcloud/vue/components/NcActionSeparator'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcListItem from '@nextcloud/vue/components/NcListItem'
 
 import ConversationIcon from './../../ConversationIcon.vue'
 
-import { useConversationInfo } from '../../../composables/useConversationInfo.js'
+import { useConversationInfo } from '../../../composables/useConversationInfo.ts'
 import { PARTICIPANT, AVATAR, CONVERSATION } from '../../../constants.ts'
 import { hasTalkFeature } from '../../../services/CapabilitiesManager.ts'
 import { copyConversationLinkToClipboard } from '../../../utils/handleUrl.ts'
@@ -390,6 +403,10 @@ export default {
 
 		notificationCalls() {
 			return this.item.notificationCalls === PARTICIPANT.NOTIFY_CALLS.ON
+		},
+
+		showCallNotificationSettings() {
+			return !this.item.remoteServer || hasTalkFeature(this.item.token, 'federation-v2')
 		},
 
 		iconType() {
@@ -568,6 +585,27 @@ export default {
 			}
 		}
 
+	}
+
+	&__subname {
+		display: flex;
+		gap: var(--default-grid-baseline);
+
+		&-actor {
+			flex: 0 1 auto;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+		&-icon {
+			flex-shrink: 0;
+		}
+		&-message {
+			flex: 1 1 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
 	}
 }
 

@@ -71,6 +71,7 @@ class Listener implements IEventListener {
 	) {
 	}
 
+	#[\Override]
 	public function handle(Event $event): void {
 		if ($event instanceof ARoomEvent && $event->getRoom()->isFederatedConversation()) {
 			return;
@@ -365,6 +366,7 @@ class Listener implements IEventListener {
 			return;
 		}
 		$room = $this->manager->getRoomByToken($share->getSharedWith());
+		$this->participantService->ensureOneToOneRoomIsFilled($room);
 
 		$metaData = $this->request->getParam('talkMetaData') ?? '';
 		$metaData = json_decode($metaData, true);
@@ -468,7 +470,7 @@ class Listener implements IEventListener {
 			try {
 				$parentComment = $this->chatManager->getParentComment($room, (string)$replyTo);
 				$parentMessage = $this->messageParser->createMessage($room, $participant, $parentComment, $this->l);
-				$this->messageParser->parseMessage($parentMessage);
+				$this->messageParser->parseMessage($parentMessage, true);
 				if ($parentMessage->isReplyable()) {
 					$parent = $parentComment;
 				}

@@ -44,6 +44,7 @@
 		<NcButton v-if="showControls"
 			size="small"
 			:title="t('spreed', 'Show all reactions')"
+			:aria-label="t('spreed', 'Show all reactions')"
 			@click="showAllReactions = true">
 			<HeartOutlineIcon :size="15" />
 		</NcButton>
@@ -81,10 +82,10 @@ import HeartOutlineIcon from 'vue-material-design-icons/HeartOutline.vue'
 import { showError } from '@nextcloud/dialogs'
 import { t, n } from '@nextcloud/l10n'
 
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcEmojiPicker from '@nextcloud/vue/dist/Components/NcEmojiPicker.js'
-import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-import NcPopover from '@nextcloud/vue/dist/Components/NcPopover.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcEmojiPicker from '@nextcloud/vue/components/NcEmojiPicker'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcPopover from '@nextcloud/vue/components/NcPopover'
 
 import ReactionsList from './ReactionsList.vue'
 

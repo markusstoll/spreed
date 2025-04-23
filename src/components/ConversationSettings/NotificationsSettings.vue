@@ -39,7 +39,7 @@ import VolumeOff from 'vue-material-design-icons/VolumeOff.vue'
 
 import { t } from '@nextcloud/l10n'
 
-import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 
 import { PARTICIPANT } from '../../constants.ts'
 import { hasTalkFeature } from '../../services/CapabilitiesManager.ts'
@@ -79,7 +79,7 @@ export default {
 
 	computed: {
 		showCallNotificationSettings() {
-			return (!hasTalkFeature(this.conversation.token, 'federation-v1') || !this.conversation.remoteServer)
+			return !this.conversation.remoteServer || hasTalkFeature(this.conversation.token, 'federation-v2')
 		}
 	},
 

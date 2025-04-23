@@ -31,8 +31,7 @@
 				<NewConversationContactsPage v-if="page === 1"
 					class="new-group-conversation__content"
 					:selected-participants.sync="selectedParticipants"
-					:can-moderate-sip-dial-out="canModerateSipDialOut"
-					:conversation-name="conversationName" />
+					:can-moderate-sip-dial-out="canModerateSipDialOut" />
 			</div>
 
 			<!-- Navigation: different buttons with different actions and
@@ -113,9 +112,9 @@ import Check from 'vue-material-design-icons/Check.vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
 
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
-import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
+import NcModal from '@nextcloud/vue/components/NcModal'
 
 import NewConversationContactsPage from './NewConversationContactsPage.vue'
 import NewConversationSetupPage from './NewConversationSetupPage.vue'
@@ -161,6 +160,8 @@ export default {
 		const isInCall = useIsInCall()
 		const selectedParticipants = ref([])
 		provide('selectedParticipants', selectedParticipants)
+		const lockedParticipants = ref([])
+		provide('lockedParticipants', lockedParticipants)
 
 		// Add a visual bulk selection state for SelectableParticipant component
 		provide('bulkParticipantsSelection', true)
@@ -171,6 +172,7 @@ export default {
 		return {
 			isInCall,
 			selectedParticipants,
+			lockedParticipants,
 			dialogHeaderPrepId,
 			dialogHeaderResId,
 		}
@@ -256,6 +258,7 @@ export default {
 				// Preload the conversation name from group selection
 				this.newConversation.displayName = item.label
 				this.selectedParticipants.push(item)
+				this.lockedParticipants.push(item)
 			}
 
 			this.showModal()
@@ -276,6 +279,7 @@ export default {
 			this.listable = CONVERSATION.LISTABLE.NONE
 			this.isAvatarEdited = false
 			this.selectedParticipants = []
+			this.lockedParticipants = []
 		},
 
 		switchToPage(value) {

@@ -41,6 +41,7 @@ class Room {
 
 	public const OBJECT_TYPE_EMAIL = 'emails';
 	public const OBJECT_TYPE_EVENT = 'event';
+	public const OBJECT_TYPE_EXTENDED_CONVERSATION = 'extended_conversation';
 	public const OBJECT_TYPE_FILE = 'file';
 	public const OBJECT_TYPE_NOTE_TO_SELF = 'note_to_self';
 	public const OBJECT_TYPE_PHONE = 'phone';
@@ -589,5 +590,13 @@ class Room {
 	 */
 	public function setMentionPermissions(int $mentionPermissions): void {
 		$this->mentionPermissions = $mentionPermissions;
+	}
+
+	public function setObjectId(string $objectId): void {
+		$this->objectId = $objectId;
+	}
+
+	public function setObjectType(string $objectType): void {
+		$this->objectType = $objectType;
 	}
 }

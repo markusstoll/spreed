@@ -30,6 +30,8 @@
 		<NcButton v-if="userAbsenceMessage && isTextMoreThanOneLine"
 			class="absence-reminder__button"
 			type="tertiary"
+			:title="!collapsed ? t('spreed', 'Collapse') : t('spreed', 'Expand')"
+			:aria-label="!collapsed ? t('spreed', 'Collapse') : t('spreed', 'Expand')"
 			@click="toggleCollapsed">
 			<template #icon>
 				<ChevronUp class="icon" :class="{'icon--reverted': !collapsed}" :size="20" />
@@ -46,10 +48,10 @@ import { getCurrentUser } from '@nextcloud/auth'
 import { t } from '@nextcloud/l10n'
 import moment from '@nextcloud/moment'
 
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcNoteCard from '@nextcloud/vue/dist/Components/NcNoteCard.js'
-import NcUserBubble from '@nextcloud/vue/dist/Components/NcUserBubble.js'
-import { useIsDarkTheme } from '@nextcloud/vue/dist/Composables/useIsDarkTheme.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcUserBubble from '@nextcloud/vue/components/NcUserBubble'
+import { useIsDarkTheme } from '@nextcloud/vue/composables/useIsDarkTheme'
 
 import AvatarWrapper from '../AvatarWrapper/AvatarWrapper.vue'
 
@@ -90,6 +92,7 @@ export default {
 		return {
 			collapsed: true,
 			isTextMoreThanOneLine: false,
+			resizeObserver: null,
 		}
 	},
 
@@ -120,16 +123,16 @@ export default {
 		},
 	},
 
-	watch: {
-		userAbsenceMessage() {
-			this.$nextTick(() => {
-				this.setIsTextMoreThanOneLine()
-			})
-		},
-	},
-
 	mounted() {
 		this.setIsTextMoreThanOneLine()
+		this.resizeObserver = new ResizeObserver(this.setIsTextMoreThanOneLine)
+		this.resizeObserver.observe(this.$refs.absenceMessage)
+	},
+
+	beforeDestroy() {
+		if (this.resizeObserver) {
+			this.resizeObserver.disconnect()
+		}
 	},
 
 	methods: {
@@ -139,6 +142,9 @@ export default {
 		},
 
 		setIsTextMoreThanOneLine() {
+			if (!this.collapsed) {
+				return
+			}
 			this.isTextMoreThanOneLine = this.$refs.absenceMessage?.scrollHeight > this.$refs.absenceMessage?.clientHeight
 		},
 

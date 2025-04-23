@@ -325,6 +325,26 @@ class ParticipantService {
 	}
 
 	/**
+	 * @param Participant $participant
+	 */
+	public function markConversationAsImportant(Participant $participant): void {
+		$attendee = $participant->getAttendee();
+		$attendee->setImportant(true);
+		$attendee->setLastAttendeeActivity($this->timeFactory->getTime());
+		$this->attendeeMapper->update($attendee);
+	}
+
+	/**
+	 * @param Participant $participant
+	 */
+	public function markConversationAsUnimportant(Participant $participant): void {
+		$attendee = $participant->getAttendee();
+		$attendee->setImportant(false);
+		$attendee->setLastAttendeeActivity($this->timeFactory->getTime());
+		$this->attendeeMapper->update($attendee);
+	}
+
+	/**
 	 * @param RoomService $roomService
 	 * @param Room $room
 	 * @param IUser $user
@@ -952,14 +972,18 @@ class ParticipantService {
 		}
 	}
 
-	public function ensureOneToOneRoomIsFilled(Room $room): void {
+	public function ensureOneToOneRoomIsFilled(Room $room, ?string $enforceUserId = null): void {
 		if ($room->getType() !== Room::TYPE_ONE_TO_ONE) {
 			return;
 		}
 
 		$users = json_decode($room->getName(), true);
 		$participants = $this->getParticipantUserIds($room);
-		$missingUsers = array_diff($users, $participants);
+		if ($enforceUserId !== null) {
+			$missingUsers = !in_array($enforceUserId, $participants) ? [$enforceUserId] : [];
+		} else {
+			$missingUsers = array_diff($users, $participants);
+		}
 
 		foreach ($missingUsers as $userId) {
 			$userDisplayName = $this->userManager->getDisplayName($userId);
@@ -1289,7 +1313,7 @@ class ParticipantService {
 	 * @psalm-param int-mask-of<Participant::FLAG_*> $flags
 	 * @throws \InvalidArgumentException
 	 */
-	public function changeInCall(Room $room, Participant $participant, int $flags, bool $endCallForEveryone = false, bool $silent = false): void {
+	public function changeInCall(Room $room, Participant $participant, int $flags, bool $endCallForEveryone = false, bool $silent = false, int $lastJoinedCall = 0): void {
 		if ($room->getType() === Room::TYPE_CHANGELOG
 			|| $room->getType() === Room::TYPE_ONE_TO_ONE_FORMER
 			|| $room->getType() === Room::TYPE_NOTE_TO_SELF) {
@@ -1328,7 +1352,7 @@ class ParticipantService {
 
 		$attendee = $participant->getAttendee();
 		if ($flags !== Participant::FLAG_DISCONNECTED) {
-			$attendee->setLastJoinedCall($this->timeFactory->getTime());
+			$attendee->setLastJoinedCall($lastJoinedCall ?: $this->timeFactory->getTime());
 			$this->attendeeMapper->update($attendee);
 		} elseif ($attendee->getActorType() === Attendee::ACTOR_PHONES) {
 			$attendee->setCallId('');
@@ -1914,12 +1938,12 @@ class ParticipantService {
 
 	/**
 	 * @param Room $room
-	 * @return string[]
+	 * @return array<string, bool> (userId => isImportant)
 	 */
-	public function getParticipantUserIdsForCallNotifications(Room $room): array {
+	public function getParticipantUsersForCallNotifications(Room $room): array {
 		$query = $this->connection->getQueryBuilder();
 
-		$query->select('a.actor_id')
+		$query->select('a.actor_id', 'a.important')
 			->from('talk_attendees', 'a')
 			->leftJoin(
 				'a', 'talk_sessions', 's',
@@ -1956,14 +1980,14 @@ class ParticipantService {
 			);
 		}
 
-		$userIds = [];
+		$users = [];
 		$result = $query->executeQuery();
 		while ($row = $result->fetch()) {
-			$userIds[] = $row['actor_id'];
+			$users[$row['actor_id']] = (bool)$row['important'];
 		}
 		$result->closeCursor();
 
-		return $userIds;
+		return $users;
 	}
 
 	/**
@@ -2255,6 +2279,13 @@ class ParticipantService {
 
 		if ($actorType === Attendee::ACTOR_USERS) {
 			return $this->getParticipant($room, $actorId, false);
+		}
+
+		if ($actorType === Attendee::ACTOR_GUESTS
+			&& in_array($actorId, [Attendee::ACTOR_ID_CLI, Attendee::ACTOR_ID_SYSTEM, Attendee::ACTOR_ID_CHANGELOG, Attendee::ACTOR_ID_SAMPLE], true)) {
+			$exception = new ParticipantNotFoundException('User is not a participant');
+			$this->logger->info('Trying to load hardcoded system guest from attendees table: ' . $actorType . '/' . $actorId);
+			throw $exception;
 		}
 
 		$query = $this->connection->getQueryBuilder();

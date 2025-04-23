@@ -115,6 +115,7 @@ class Capabilities implements IPublicCapability {
 		'schedule-meeting',
 		'edit-draft-poll',
 		'conversation-creation-all',
+		'important-conversations',
 	];
 
 	public const CONDITIONAL_FEATURES = [
@@ -138,6 +139,7 @@ class Capabilities implements IPublicCapability {
 		'chat-summary-api',
 		'call-notification-state-api',
 		'schedule-meeting',
+		'important-conversations',
 	];
 
 	public const LOCAL_CONFIGS = [
@@ -199,6 +201,7 @@ class Capabilities implements IPublicCapability {
 	 *      spreed?: TalkCapabilities,
 	 * }
 	 */
+	#[\Override]
 	public function getCapabilities(): array {
 		$user = $this->userSession->getUser();
 		if ($user instanceof IUser && $this->talkConfig->isDisabledForUser($user)) {

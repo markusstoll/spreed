@@ -62,8 +62,8 @@ import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 
 import { t } from '@nextcloud/l10n'
 
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcRichText from '@nextcloud/vue/dist/Components/NcRichText.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcRichText from '@nextcloud/vue/components/NcRichText'
 
 import AvatarWrapper from './AvatarWrapper/AvatarWrapper.vue'
 import DefaultParameter from './MessagesList/MessagesGroup/Message/MessagePart/DefaultParameter.vue'
@@ -135,7 +135,7 @@ export default {
 		component() {
 			return this.canCancel
 				? { tag: 'div', link: undefined }
-				: { tag: 'router-link', link: { hash: this.hash, params: { skipLeaveWarning: true } } }
+				: { tag: 'router-link', link: { hash: this.hash } }
 		},
 
 		isOwnMessageQuoted() {

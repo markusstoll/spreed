@@ -55,7 +55,7 @@ jobs:
         test-suite: ['callapi', 'chat-1', 'chat-2', 'chat-3', 'chat-4', 'command', 'conversation-1', 'conversation-2', 'conversation-3', 'conversation-4', 'conversation-5', 'federation', 'integration', 'sharing-1', 'sharing-2', 'sharing-3', 'sharing-4']
         php-versions: ['8.2']
         server-versions: ['master']
-        guests-versions: ['master']
+        guests-versions: ['main']
         circles-versions: ['master']
         notifications-versions: ['master']
 
@@ -104,7 +104,7 @@ jobs:
           ref: ${{ matrix.notifications-versions }}
 
       - name: Set up php ${{ matrix.php-versions }}
-        uses: shivammathur/setup-php@c541c155eee45413f5b09a52248675b1a2575231 # v2.31.1
+        uses: shivammathur/setup-php@cf4cade2721270509d5b1c766ab3549210a39a2a # v2.33.0
         with:
           php-version: ${{ matrix.php-versions }}
           # https://docs.nextcloud.com/server/stable/admin_manual/installation/source_installation.html#prerequisites-for-manual-installation

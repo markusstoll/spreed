@@ -9,6 +9,7 @@
 		message to -->
 		<RoomSelector v-if="!showForwardedConfirmation"
 			show-postable-only
+			allow-federation
 			:dialog-title="dialogTitle"
 			:dialog-subtitle="dialogSubtitle"
 			@select="setSelectedConversationToken"
@@ -48,9 +49,9 @@ import { showError } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcDialog from '@nextcloud/vue/dist/Components/NcDialog.js'
-import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 
 import RoomSelector from '../../../../RoomSelector.vue'
 

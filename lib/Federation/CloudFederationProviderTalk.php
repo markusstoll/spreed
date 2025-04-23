@@ -92,6 +92,7 @@ class CloudFederationProviderTalk implements ICloudFederationProvider, ISignedCl
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getShareType(): string {
 		return 'talk-room';
 	}
@@ -101,6 +102,7 @@ class CloudFederationProviderTalk implements ICloudFederationProvider, ISignedCl
 	 * @throws HintException
 	 * @throws DBException
 	 */
+	#[\Override]
 	public function shareReceived(ICloudFederationShare $share): string {
 		if (!$this->config->isFederationEnabled()) {
 			$this->logger->debug('Received a federation invite but federation is disabled');
@@ -189,6 +191,7 @@ class CloudFederationProviderTalk implements ICloudFederationProvider, ISignedCl
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function notificationReceived($notificationType, $providerId, array $notification): array {
 		if (!is_numeric($providerId)) {
 			throw new BadRequestException(['providerId']);
@@ -361,8 +364,21 @@ class CloudFederationProviderTalk implements ICloudFederationProvider, ISignedCl
 			if ($notification['newValue'] === null) {
 				$this->roomService->resetActiveSince($room, null);
 			} else {
-				$activeSince = $this->timeFactory->getDateTime('@' . $notification['newValue']);
-				$this->roomService->setActiveSince($room, null, $activeSince, $notification['callFlag'], !empty($notification['details'][AParticipantModifiedEvent::DETAIL_IN_CALL_SILENT]));
+				$activeSince = $room->getActiveSince();
+				if ($activeSince === null || $notification['newValue'] < $activeSince->getTimestamp()) {
+					/**
+					 * If the host is sending a lower timestamp, we healed an early in_call update,
+					 * so we take the older value as the host should know more specifically.
+					 */
+					$activeSince = $this->timeFactory->getDateTime('@' . $notification['newValue']);
+				}
+				$this->roomService->setActiveSince(
+					$room,
+					null,
+					$activeSince,
+					$notification['callFlag'] | $room->getCallFlag(),
+					!empty($notification['details'][AParticipantModifiedEvent::DETAIL_IN_CALL_SILENT]),
+				);
 			}
 		} elseif ($notification['changedProperty'] === ARoomModifiedEvent::PROPERTY_AVATAR) {
 			$this->roomService->setAvatar($room, $notification['newValue']);
@@ -374,7 +390,18 @@ class CloudFederationProviderTalk implements ICloudFederationProvider, ISignedCl
 		} elseif ($notification['changedProperty'] === ARoomModifiedEvent::PROPERTY_DESCRIPTION) {
 			$this->roomService->setDescription($room, $notification['newValue']);
 		} elseif ($notification['changedProperty'] === ARoomModifiedEvent::PROPERTY_IN_CALL) {
-			$this->roomService->setActiveSince($room, null, $room->getActiveSince(), $notification['newValue'], true);
+			/**
+			 * In case the in_call update arrives before the actual active_since update,
+			 * we fake the timestamp so we at least don't fail the request.
+			 * When the active_since finally arrives we merge the results.
+			 */
+			$this->roomService->setActiveSince(
+				$room,
+				null,
+				$room->getActiveSince() ?? $this->timeFactory->getDateTime(),
+				$notification['newValue'],
+				true,
+			);
 		} elseif ($notification['changedProperty'] === ARoomModifiedEvent::PROPERTY_LOBBY) {
 			$dateTime = !empty($notification['dateTime']) ? \DateTime::createFromFormat('U', $notification['dateTime']) : null;
 			$this->roomService->setLobby($room, $notification['newValue'], $dateTime, $notification['timerReached'] ?? false);
@@ -631,6 +658,7 @@ class CloudFederationProviderTalk implements ICloudFederationProvider, ISignedCl
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getSupportedShareTypes(): array {
 		return ['user'];
 	}
@@ -638,6 +666,7 @@ class CloudFederationProviderTalk implements ICloudFederationProvider, ISignedCl
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function getFederationIdFromSharedSecret(
 		#[SensitiveParameter]
 		string $sharedSecret,

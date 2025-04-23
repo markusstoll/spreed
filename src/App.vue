@@ -27,10 +27,11 @@ import { emit, subscribe, unsubscribe } from '@nextcloud/event-bus'
 import { t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 
-import NcAppContent from '@nextcloud/vue/dist/Components/NcAppContent.js'
-import NcContent from '@nextcloud/vue/dist/Components/NcContent.js'
-import { useHotKey } from '@nextcloud/vue/dist/Composables/useHotKey.js'
-import { useIsMobile } from '@nextcloud/vue/dist/Composables/useIsMobile.js'
+import NcAppContent from '@nextcloud/vue/components/NcAppContent'
+import NcContent from '@nextcloud/vue/components/NcContent'
+import { useHotKey } from '@nextcloud/vue/composables/useHotKey'
+import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
+import { spawnDialog } from '@nextcloud/vue/functions/dialog'
 
 import ConversationSettingsDialog from './components/ConversationSettings/ConversationSettingsDialog.vue'
 import LeftSidebar from './components/LeftSidebar/LeftSidebar.vue'
@@ -38,6 +39,7 @@ import MediaSettings from './components/MediaSettings/MediaSettings.vue'
 import PollManager from './components/PollViewer/PollManager.vue'
 import RightSidebar from './components/RightSidebar/RightSidebar.vue'
 import SettingsDialog from './components/SettingsDialog/SettingsDialog.vue'
+import ConfirmDialog from './components/UIShared/ConfirmDialog.vue'
 
 import { useActiveSession } from './composables/useActiveSession.js'
 import { useDocumentTitle } from './composables/useDocumentTitle.ts'
@@ -95,24 +97,33 @@ export default {
 	},
 
 	computed: {
-		getTotalUnreadMessages() {
-			return this.$store.getters.conversationsList.reduce((total, conversation) => {
-				return total + (conversation.unreadMessages || 0);
-			}, 0);
-		},
-		
-		getTotalUnreadMentions() {
-			return this.$store.getters.conversationsList.filter(conversation => conversation.unreadMention).length;
-		},
-		
-		getTotalUnreadMentionsDirect() {
-			return this.$store.getters.conversationsList.filter(conversation => conversation.unreadMentionDirect).length;
-		},
+		unreadCountsMap() {
+			return this.$store.getters.conversationsList.reduce((acc, conversation) => {
+				if (conversation.isArchived) {
+					// Do not consider archived conversations in counting
+					return acc
+				}
 
-		getUnreadConversationCount() {
-			return this.$store.getters.conversationsList.filter(conversation => (conversation.unreadMessages || 0) > 0).length;
-		},
+				if (conversation.unreadMessages > 0) {
+					acc.conversations++
+					acc.messages += conversation.unreadMessages
+				}
 
+				if (conversation.unreadMention) {
+					acc.mentions++
+				}
+
+				if (conversation.unreadMentionDirect) {
+					acc.mentionsDirect++
+				}
+				return acc
+			}, {
+				conversations: 0,
+				messages: 0,
+				mentions: 0,
+				mentionsDirect: 0,
+			})
+		},
 		getUserId() {
 			return this.$store.getters.getUserId()
 		},
@@ -182,15 +193,12 @@ export default {
 			}
 		},
 
-		// Watch for changes in unread counters and emit events
-		getTotalUnreadMessages() {
-			this.emitUnreadCountUpdated()
-		},
-		getTotalUnreadMentions() {
-			this.emitUnreadCountUpdated()
-		},
-		getTotalUnreadMentionsDirect() {
-			this.emitUnreadCountUpdated()
+		unreadCountsMap: {
+			deep: true,
+			immediate: true,
+			handler(value) {
+				emit('talk:unread:updated', value)
+			},
 		}
 	},
 
@@ -259,7 +267,7 @@ export default {
 			}
 		})
 
-		EventBus.on('switch-to-conversation', (params) => {
+		EventBus.on('switch-to-conversation', async (params) => {
 			if (this.isInCall) {
 				this.callViewStore.setForceCallView(true)
 
@@ -269,6 +277,11 @@ export default {
 				const virtualBackgroundType = BrowserStorage.getItem('virtualBackgroundType_' + this.token)
 				const virtualBackgroundBlurStrength = BrowserStorage.getItem('virtualBackgroundBlurStrength_' + this.token)
 				const virtualBackgroundUrl = BrowserStorage.getItem('virtualBackgroundUrl_' + this.token)
+
+				// Fetch conversation object, if it's not known yet to the client
+				if (!this.$store.getters.conversation(params.token)) {
+					await this.fetchSingleConversation(params.token)
+				}
 
 				EventBus.once('joined-conversation', async ({ token }) => {
 					if (params.token !== token) {
@@ -390,28 +403,31 @@ export default {
 		 * Global before guard, this is called whenever a navigation is triggered.
 		 */
 		Router.beforeEach((to, from, next) => {
-			if (this.warnLeaving && !to.params?.skipLeaveWarning) {
-				OC.dialogs.confirmDestructive(
-					t('spreed', 'Navigating away from the page will leave the call in {conversation}', {
+			if (from.name === 'conversation' && to.name === 'conversation' && from.params.token === to.params.token) {
+				// Navigating within the same conversation
+				beforeRouteChangeListener(to, from, next)
+			} else if (!this.warnLeaving || to.params?.skipLeaveWarning) {
+				// Safe to navigate
+				beforeRouteChangeListener(to, from, next)
+			} else {
+				spawnDialog(ConfirmDialog, {
+					name: t('spreed', 'Leave call'),
+					message: t('spreed', 'Navigating away from the page will leave the call in {conversation}', {
 						conversation: this.currentConversation?.displayName ?? '',
 					}),
-					t('spreed', 'Leave call'),
-					{
-						type: OC.dialogs.YES_NO_BUTTONS,
-						confirm: t('spreed', 'Leave call'),
-						confirmClasses: 'error',
-						cancel: t('spreed', 'Stay in call'),
-					},
-					(decision) => {
-						if (!decision) {
-							return
+					buttons: [
+						{
+							label: t('spreed', 'Stay in call'),
+						},
+						{
+							label: t('spreed', 'Leave call'),
+							type: 'primary',
+							callback: () => {
+								beforeRouteChangeListener(to, from, next)
+							},
 						}
-
-						beforeRouteChangeListener(to, from, next)
-					}
-				)
-			} else {
-				beforeRouteChangeListener(to, from, next)
+					],
+				})
 			}
 		})
 
@@ -437,9 +453,6 @@ export default {
 				open: true,
 			})
 		}
-
-		// Initialize unread counts emission
-		this.emitUnreadCountUpdated()
 
 		subscribe('notifications:action:execute', this.interceptNotificationActions)
 		subscribe('notifications:notification:received', this.interceptNotificationReceived)
@@ -650,18 +663,6 @@ export default {
 			if (this.$route.name !== 'root' && !this.isInCall) {
 				this.$router.push({ name: 'root' })
 			}
-		},
-
-		/**
-		 * Emits the UNREAD_COUNT_UPDATED event with the current counter values
-		 */
-		emitUnreadCountUpdated() {
-			emit('talk:unread:updated', {
-				conversations: this.getUnreadConversationCount,
-				messages: this.getTotalUnreadMessages,
-				mentions: this.getTotalUnreadMentions,
-				mentionsDirect: this.getTotalUnreadMentionsDirect
-			})
 		},
 	},
 }
