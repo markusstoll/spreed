@@ -19,20 +19,17 @@
 </template>
 
 <script>
-import debounce from 'debounce'
-import { provide } from 'vue'
-
 import { getCurrentUser } from '@nextcloud/auth'
 import { emit, subscribe, unsubscribe } from '@nextcloud/event-bus'
 import { t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
-
-import NcAppContent from '@nextcloud/vue/components/NcAppContent'
-import NcContent from '@nextcloud/vue/components/NcContent'
 import { useHotKey } from '@nextcloud/vue/composables/useHotKey'
 import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
 import { spawnDialog } from '@nextcloud/vue/functions/dialog'
-
+import debounce from 'debounce'
+import { provide } from 'vue'
+import NcAppContent from '@nextcloud/vue/components/NcAppContent'
+import NcContent from '@nextcloud/vue/components/NcContent'
 import ConversationSettingsDialog from './components/ConversationSettings/ConversationSettingsDialog.vue'
 import LeftSidebar from './components/LeftSidebar/LeftSidebar.vue'
 import MediaSettings from './components/MediaSettings/MediaSettings.vue'
@@ -40,12 +37,11 @@ import PollManager from './components/PollViewer/PollManager.vue'
 import RightSidebar from './components/RightSidebar/RightSidebar.vue'
 import SettingsDialog from './components/SettingsDialog/SettingsDialog.vue'
 import ConfirmDialog from './components/UIShared/ConfirmDialog.vue'
-
 import { useActiveSession } from './composables/useActiveSession.js'
 import { useDocumentTitle } from './composables/useDocumentTitle.ts'
 import { useHashCheck } from './composables/useHashCheck.js'
 import { useIsInCall } from './composables/useIsInCall.js'
-import { useSessionIssueHandler } from './composables/useSessionIssueHandler.js'
+import { useSessionIssueHandler } from './composables/useSessionIssueHandler.ts'
 import { CONVERSATION, PARTICIPANT } from './constants.ts'
 import Router from './router/router.ts'
 import BrowserStorage from './services/BrowserStorage.js'
@@ -124,6 +120,7 @@ export default {
 				mentionsDirect: 0,
 			})
 		},
+
 		getUserId() {
 			return this.$store.getters.getUserId()
 		},
@@ -153,23 +150,12 @@ export default {
 		currentConversation() {
 			return this.$store.getters.conversation(this.token)
 		},
-
-		/**
-		 * Computes whether the current conversation is one to one
-		 *
-		 * @return {boolean} The result
-		 */
-		isOneToOne() {
-			return this.currentConversation?.type === CONVERSATION.TYPE.ONE_TO_ONE
-				|| this.currentConversation?.type === CONVERSATION.TYPE.ONE_TO_ONE_FORMER
-		},
 	},
 
 	watch: {
 		token(newValue, oldValue) {
 			const shouldShowSidebar = BrowserStorage.getItem('sidebarOpen') !== 'false'
-			// Collapse the sidebar if it's a one to one conversation
-			if (this.isOneToOne || !shouldShowSidebar || this.isMobile) {
+			if (!shouldShowSidebar || this.isMobile) {
 				this.sidebarStore.hideSidebar({ cache: false })
 			} else if (shouldShowSidebar) {
 				this.sidebarStore.showSidebar({ cache: false })
@@ -190,7 +176,7 @@ export default {
 				} else {
 					toggle?.removeAttribute('data-theme-dark')
 				}
-			}
+			},
 		},
 
 		unreadCountsMap: {
@@ -199,7 +185,7 @@ export default {
 			handler(value) {
 				emit('talk:unread:updated', value)
 			},
-		}
+		},
 	},
 
 	beforeCreate() {
@@ -283,6 +269,12 @@ export default {
 					await this.fetchSingleConversation(params.token)
 				}
 
+				const conversation = this.$store.getters.conversation(this.token)
+				const previousParticipants = []
+				if (conversation.type === CONVERSATION.TYPE.ONE_TO_ONE) {
+					previousParticipants.push(conversation.name)
+				}
+
 				EventBus.once('joined-conversation', async ({ token }) => {
 					if (params.token !== token) {
 						return
@@ -329,13 +321,22 @@ export default {
 						flags |= PARTICIPANT.CALL_FLAG.WITH_VIDEO
 					}
 
-					await this.$store.dispatch('joinCall', {
+					const payload = {
 						token: params.token,
 						participantIdentifier: this.$store.getters.getParticipantIdentifier(),
 						flags,
 						silent: true,
 						recordingConsent: this.recordingConsentGiven,
-					})
+					}
+
+					if (conversation.objectType === CONVERSATION.OBJECT_TYPE.EXTENDED) {
+						payload.silent = false
+						if (previousParticipants.length) {
+							payload.silentFor = previousParticipants
+						}
+					}
+
+					await this.$store.dispatch('joinCall', payload)
 
 					this.callViewStore.setForceCallView(false)
 				})
@@ -375,7 +376,7 @@ export default {
 			}
 		})
 
-		const beforeRouteChangeListener = (to, from, next) => {
+		const beforeRouteChangeListener = async (to, from, next) => {
 			if (this.isNextcloudTalkHashDirty) {
 				// Nextcloud Talk configuration changed, reload the page when changing configuration
 				window.location = generateUrl('call/' + to.params.token)
@@ -386,6 +387,15 @@ export default {
 			 * This runs whenever the new route is a conversation.
 			 */
 			if (to.name === 'conversation') {
+				// Fetch conversation object, if it's not known yet to the client
+				if (!this.$store.getters.conversation(to.params.token)) {
+					const result = await this.fetchSingleConversation(to.params.token)
+					if (!result) {
+						// If the conversation is not found, block further navigation,
+						// it is handled in the fetchSingleConversation method
+						return
+					}
+				}
 				// Update current token in the token store
 				this.$store.dispatch('updateToken', to.params.token)
 			}
@@ -425,7 +435,7 @@ export default {
 							callback: () => {
 								beforeRouteChangeListener(to, from, next)
 							},
-						}
+						},
 					],
 				})
 			}
@@ -477,55 +487,55 @@ export default {
 			}
 
 			switch (event.action.type) {
-			case 'WEB': {
-				const load = event.action.url.split('/call/').pop()
-				if (!load) {
-					return
+				case 'WEB': {
+					const load = event.action.url.split('/call/').pop()
+					if (!load) {
+						return
+					}
+
+					const [token, hash] = load.split('#')
+					this.$router.push({
+						name: 'conversation',
+						hash: hash ? `#${hash}` : '',
+						params: {
+							token,
+						},
+					})
+
+					event.cancelAction = true
+					break
 				}
-
-				const [token, hash] = load.split('#')
-				this.$router.push({
-					name: 'conversation',
-					hash: hash ? `#${hash}` : '',
-					params: {
-						token,
-					},
-				})
-
-				event.cancelAction = true
-				break
-			}
-			case 'POST': {
+				case 'POST': {
 				// Federation invitation handling
-				if (event.notification.objectType === 'remote_talk_share') {
-					try {
-						event.cancelAction = true
-						this.federationStore.addInvitationFromNotification(event.notification)
-						const conversation = await this.federationStore.acceptShare(event.notification.objectId)
-						if (conversation.token) {
-							this.$store.dispatch('addConversation', conversation)
-							this.$router.push({ name: 'conversation', params: { token: conversation.token } })
+					if (event.notification.objectType === 'remote_talk_share') {
+						try {
+							event.cancelAction = true
+							this.federationStore.addInvitationFromNotification(event.notification)
+							const conversation = await this.federationStore.acceptShare(event.notification.objectId)
+							if (conversation.token) {
+								this.$store.dispatch('addConversation', conversation)
+								this.$router.push({ name: 'conversation', params: { token: conversation.token } })
+							}
+						} catch (error) {
+							console.error(error)
 						}
-					} catch (error) {
-						console.error(error)
 					}
+					break
 				}
-				break
-			}
-			case 'DELETE': {
+				case 'DELETE': {
 				// Federation invitation handling
-				if (event.notification.objectType === 'remote_talk_share') {
-					try {
-						event.cancelAction = true
-						this.federationStore.addInvitationFromNotification(event.notification)
-						await this.federationStore.rejectShare(event.notification.objectId)
-					} catch (error) {
-						console.error(error)
+					if (event.notification.objectType === 'remote_talk_share') {
+						try {
+							event.cancelAction = true
+							this.federationStore.addInvitationFromNotification(event.notification)
+							await this.federationStore.rejectShare(event.notification.objectId)
+						} catch (error) {
+							console.error(error)
+						}
 					}
+					break
 				}
-				break
-			}
-			default: break
+				default: break
 			}
 		},
 
@@ -542,29 +552,29 @@ export default {
 			}
 
 			switch (event.notification.objectType) {
-			case 'chat': {
-				if (event.notification.subjectRichParameters?.reaction) {
+				case 'chat': {
+					if (event.notification.subjectRichParameters?.reaction) {
 					// Ignore reaction notifications in case of one-to-one and always-notify
-					return
-				}
+						return
+					}
 
-				this.$store.dispatch('updateConversationLastMessageFromNotification', {
-					notification: event.notification,
-				})
-				break
-			}
-			case 'call': {
-				this.$store.dispatch('updateCallStateFromNotification', {
-					notification: event.notification,
-				})
-				break
-			}
-			// Federation invitation handling
-			case 'remote_talk_share': {
-				this.federationStore.addInvitationFromNotification(event.notification)
-				break
-			}
-			default: break
+					this.$store.dispatch('updateConversationLastMessageFromNotification', {
+						notification: event.notification,
+					})
+					break
+				}
+				case 'call': {
+					this.$store.dispatch('updateCallStateFromNotification', {
+						notification: event.notification,
+					})
+					break
+				}
+				// Federation invitation handling
+				case 'remote_talk_share': {
+					this.federationStore.addInvitationFromNotification(event.notification)
+					break
+				}
+				default: break
 			}
 		},
 
@@ -595,13 +605,13 @@ export default {
 				return
 			}
 			this.isRefreshingCurrentConversation = true
-
+			let isSuccessfullyFetched = false
 			try {
 				/**
 				 * Fetches a single conversation
 				 */
 				await this.$store.dispatch('fetchConversation', { token })
-
+				isSuccessfullyFetched = true
 				/**
 				 * Emits a global event that is used in App.vue to update the page title once the
 				 * ( if the current route is a conversation and once the conversations are received)
@@ -616,7 +626,9 @@ export default {
 			} finally {
 				this.isRefreshingCurrentConversation = false
 			}
+			return isSuccessfullyFetched
 		},
+
 		// Upon pressing Ctrl+F, focus SearchBox native input in the LeftSidebar
 		handleAppSearch() {
 			emit('toggle-navigation', {

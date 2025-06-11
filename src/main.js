@@ -3,51 +3,41 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { createPinia, PiniaVuePlugin } from 'pinia'
-import Vue, { watch } from 'vue'
-import VueRouter from 'vue-router'
-import Vuex from 'vuex'
-
 import { getRequestToken } from '@nextcloud/auth'
 import { emit } from '@nextcloud/event-bus'
 import { generateFilePath } from '@nextcloud/router'
-
+import Vue, { watch } from 'vue'
+import VueRouter from 'vue-router'
+import Vuex from 'vuex'
 import App from './App.vue'
-
-import './init.js'
 import router from './router/router.ts'
 import { SettingsAPI } from './services/SettingsAPI.ts'
 import store from './store/index.js'
+import pinia from './stores/pinia.ts'
 import { useSidebarStore } from './stores/sidebar.ts'
 
+import './init.js'
 // Leaflet icon patch
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.webpack.css' // Re-uses images from ~leaflet package
-
-// eslint-disable-next-line
 import 'leaflet-defaulticon-compatibility'
 
 if (!IS_DESKTOP) {
 	// CSP config for webpack dynamic chunk loading
-	// eslint-disable-next-line
 	__webpack_nonce__ = btoa(getRequestToken())
 
 	// Correct the root of the app for chunk loading
 	// OC.linkTo matches the apps folders
 	// OC.generateUrl ensure the index.php (or not)
 	// We do not want the index.php since we're loading files
-	// eslint-disable-next-line
 	__webpack_public_path__ = generateFilePath('spreed', '', 'js/')
 }
 
 Vue.prototype.OC = OC
 Vue.prototype.OCA = OCA
 
-Vue.use(PiniaVuePlugin)
 Vue.use(Vuex)
 Vue.use(VueRouter)
-
-const pinia = createPinia()
 
 const instance = new Vue({
 	el: '#content',
@@ -57,7 +47,7 @@ const instance = new Vue({
 	propsData: {
 		fileInfo: null,
 	},
-	render: h => h(App),
+	render: (h) => h(App),
 })
 
 window.store = store
@@ -69,7 +59,7 @@ const Sidebar = function() {
 	this.state = {
 		file: '',
 	}
-	const sidebarStore = useSidebarStore()
+	const sidebarStore = useSidebarStore(pinia)
 	watch(() => sidebarStore.show, (sidebarShown) => {
 		if (!sidebarShown) {
 			this.state.file = ''

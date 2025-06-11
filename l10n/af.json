@@ -6,6 +6,7 @@
     "Unknown filetype" : "Onbekende lêertipe",
     "Description" : "Beskrywing",
     "Accept" : "Aanvaar",
+    "New message" : "Nuwe boodskap",
     "Open settings" : "Open instellings",
     "error" : "fout",
     "Andorra" : "Andorra",
@@ -282,6 +283,7 @@
     "Edit" : "Wysig",
     "Delete" : "Skrap",
     "Notifications" : "Kennisgewings",
+    "Join" : "Sluit aan",
     "Log in" : "Teken Aan",
     "Remove from favorites" : "Verwyder uit gunstelinge",
     "Add to favorites" : "Voeg by gunstelinge",
@@ -301,7 +303,6 @@
     "Enter password" : "Voer wagwoord in",
     "Send" : "Stuur",
     "Settings" : "Instellings",
-    "Join" : "Sluit aan",
     "guest" : "gas",
     "Remove participant" : "Verwyder deelnemer",
     "Promote to moderator" : "Bevorder na moderator",
@@ -310,6 +311,7 @@
     "Privacy" : "Privaatheid",
     "Keyboard shortcuts" : "Sneltoetse",
     "Search" : "Soek",
+    "Keep" : "Hou",
     "Select a region" : "Kies ’n streek",
     "Submit" : "Dien in",
     "User" : "Gebruiker",
@@ -330,8 +332,6 @@
     "iOS app" : "iOS-toep",
     "__language_name__" : "Afrikaans",
     "Tasks" : "Take",
-    "Loading" : "Laai tans..",
-    "Close" : "Sluit",
-    "Password protect" : "Beskerm met 'n wagwoord"
+    "Close" : "Sluit"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

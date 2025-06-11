@@ -19,7 +19,7 @@
 				</NcButton>
 				<NcDialog class="danger-zone__dialog"
 					:open.sync="isLeaveConversationDialogOpen"
-					:name="t('spreed','Leave conversation')"
+					:name="t('spreed', 'Leave conversation')"
 					container=".danger-zone">
 					<template #default>
 						<p>{{ leaveConversationDialogMessage }}</p>
@@ -53,7 +53,7 @@
 				</NcButton>
 				<NcDialog class="danger-zone__dialog"
 					:open.sync="isDeleteConversationDialogOpen"
-					:name="t('spreed','Delete conversation')"
+					:name="t('spreed', 'Delete conversation')"
 					:message="deleteConversationDialogMessage"
 					container=".danger-zone">
 					<template #actions>
@@ -79,7 +79,7 @@
 				</NcButton>
 				<NcDialog class="danger-zone__dialog"
 					:open.sync="isDeleteChatDialogOpen"
-					:name="t('spreed','Delete all chat messages')"
+					:name="t('spreed', 'Delete all chat messages')"
 					:message="deleteChatDialogMessage"
 					container=".danger-zone">
 					<template #actions>
@@ -98,16 +98,13 @@
 </template>
 
 <script>
-import { ref } from 'vue'
-
 import { showError } from '@nextcloud/dialogs'
 import { emit } from '@nextcloud/event-bus'
 import { t } from '@nextcloud/l10n'
-
+import { ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-
 import { hasTalkFeature } from '../../services/CapabilitiesManager.ts'
 
 const supportsArchive = hasTalkFeature('local', 'archived-conversations-v2')
@@ -178,7 +175,7 @@ export default {
 				escape: false,
 				sanitize: false,
 			})
-		}
+		},
 	},
 
 	methods: {

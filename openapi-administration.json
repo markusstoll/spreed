@@ -101,13 +101,15 @@
                         "type": "array",
                         "items": {
                             "type": "string"
-                        }
+                        },
+                        "minItems": 1
                     },
                     "features-local": {
                         "type": "array",
                         "items": {
                             "type": "string"
-                        }
+                        },
+                        "minItems": 1
                     },
                     "config": {
                         "type": "object",
@@ -118,7 +120,8 @@
                             "conversations",
                             "federation",
                             "previews",
-                            "signaling"
+                            "signaling",
+                            "experiments"
                         ],
                         "properties": {
                             "attachments": {
@@ -144,6 +147,7 @@
                                     "recording-consent",
                                     "supported-reactions",
                                     "predefined-backgrounds",
+                                    "predefined-backgrounds-v2",
                                     "can-upload-background",
                                     "sip-enabled",
                                     "sip-dialout-enabled",
@@ -175,6 +179,14 @@
                                     },
                                     "predefined-backgrounds": {
                                         "type": "array",
+                                        "description": "List of file names relative to the spreed/img/backgrounds/ web path, e.g. `2_home.jpg`",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "predefined-backgrounds-v2": {
+                                        "type": "array",
+                                        "description": "List of file paths relative to the server web root with leading slash, e.g. `/apps/spreed/img/backgrounds/2_home.jpg`",
                                         "items": {
                                             "type": "string"
                                         }
@@ -248,7 +260,10 @@
                                     "can-create",
                                     "force-passwords",
                                     "list-style",
-                                    "description-length"
+                                    "description-length",
+                                    "retention-event",
+                                    "retention-phone",
+                                    "retention-instant-meetings"
                                 ],
                                 "properties": {
                                     "can-create": {
@@ -268,6 +283,21 @@
                                         "type": "integer",
                                         "format": "int64",
                                         "minimum": 1
+                                    },
+                                    "retention-event": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "minimum": 0
+                                    },
+                                    "retention-phone": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "minimum": 0
+                                    },
+                                    "retention-instant-meetings": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "minimum": 0
                                     }
                                 }
                             },
@@ -320,6 +350,19 @@
                                         "type": "string"
                                     }
                                 }
+                            },
+                            "experiments": {
+                                "type": "object",
+                                "required": [
+                                    "enabled"
+                                ],
+                                "properties": {
+                                    "enabled": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "minimum": 0
+                                    }
+                                }
                             }
                         }
                     },
@@ -329,7 +372,8 @@
                             "type": "array",
                             "items": {
                                 "type": "string"
-                            }
+                            },
+                            "minItems": 1
                         }
                     },
                     "version": {
@@ -1467,8 +1511,23 @@
                                                 },
                                                 "data": {
                                                     "type": "object",
-                                                    "additionalProperties": {
-                                                        "type": "object"
+                                                    "required": [
+                                                        "version"
+                                                    ],
+                                                    "properties": {
+                                                        "version": {
+                                                            "type": "string"
+                                                        },
+                                                        "warning": {
+                                                            "type": "string"
+                                                        },
+                                                        "features": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "minItems": 1
+                                                        }
                                                     }
                                                 }
                                             }

@@ -5,10 +5,12 @@
 
 <template>
 	<Fragment>
+		<!-- eslint-disable-next-line vue/no-v-html -->
+		<p v-if="canFullModerate && isEventConversation" class="app-settings-section__hint" v-html="calendarHint" />
 		<h4 class="app-settings-section__subtitle">
 			{{ t('spreed', 'Name') }}
 		</h4>
-		<EditableTextField :editable="canFullModerate"
+		<EditableTextField :editable="canFullModerate && !isEventConversation"
 			:initial-text="conversationName"
 			:editing="isEditingName"
 			:loading="isNameLoading"
@@ -21,7 +23,7 @@
 			<h4 class="app-settings-section__subtitle">
 				{{ t('spreed', 'Description') }}
 			</h4>
-			<EditableTextField :editable="canFullModerate"
+			<EditableTextField :editable="canFullModerate && !isEventConversation"
 				:initial-text="description"
 				:editing="isEditingDescription"
 				:loading="isDescriptionLoading"
@@ -44,16 +46,14 @@
 </template>
 
 <script>
-import { Fragment } from 'vue-frag'
-
 import { showError } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
-
-import ConversationAvatarEditor from './ConversationAvatarEditor.vue'
+import { generateUrl } from '@nextcloud/router'
+import { Fragment } from 'vue-frag'
 import EditableTextField from '../UIShared/EditableTextField.vue'
-
+import ConversationAvatarEditor from './ConversationAvatarEditor.vue'
 import { CONVERSATION } from '../../constants.ts'
-import { hasTalkFeature, getTalkConfig } from '../../services/CapabilitiesManager.ts'
+import { getTalkConfig, hasTalkFeature } from '../../services/CapabilitiesManager.ts'
 
 const supportsAvatar = hasTalkFeature('local', 'avatar')
 const maxDescriptionLength = getTalkConfig('local', 'conversations', 'description-length') || 500
@@ -83,7 +83,7 @@ export default {
 		return {
 			supportsAvatar,
 			CONVERSATION,
-			maxDescriptionLength
+			maxDescriptionLength,
 		}
 	},
 
@@ -112,6 +112,16 @@ export default {
 
 		token() {
 			return this.conversation.token
+		},
+
+		calendarHint() {
+			return t('spreed', 'You can change the title and the description in {linkstart}Calendar ↗{linkend}.')
+				.replace('{linkstart}', `<a target="_blank" rel="noreferrer nofollow" class="external" href="${generateUrl('apps/calendar')}">`)
+				.replace('{linkend}', '</a>')
+		},
+
+		isEventConversation() {
+			return this.conversation.objectType === CONVERSATION.OBJECT_TYPE.EVENT
 		},
 	},
 

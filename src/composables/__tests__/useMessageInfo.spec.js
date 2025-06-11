@@ -4,8 +4,7 @@
  */
 import { createPinia, setActivePinia } from 'pinia'
 import { computed, ref } from 'vue'
-
-import { ATTENDEE, CONVERSATION } from '../../constants.ts'
+import { ATTENDEE, CONVERSATION, MESSAGE } from '../../constants.ts'
 import { useGuestNameStore } from '../../stores/guestName.js'
 import { useConversationInfo } from '../useConversationInfo.ts'
 import { useMessageInfo } from '../useMessageInfo.js'
@@ -18,7 +17,7 @@ jest.mock('@nextcloud/capabilities', () => ({
 			features: ['edit-messages', 'edit-messages-note-to-self'],
 			'features-local': [],
 		},
-	}))
+	})),
 }))
 jest.mock('../useStore.js')
 jest.mock('../useConversationInfo.ts')
@@ -45,7 +44,7 @@ describe('message actions', () => {
 			timestamp: new Date('2024-05-01 16:15:00').getTime() / 1000,
 			token: TOKEN,
 			systemMessage: '',
-			messageType: 'comment',
+			messageType: MESSAGE.TYPE.COMMENT,
 		})
 		conversationProps = {
 			token: TOKEN,
@@ -153,7 +152,6 @@ describe('message actions', () => {
 		// Assert
 		expect(result.isCurrentUserOwnMessage.value).toBe(false)
 		expect(result.isDeleteable.value).toBe(false)
-
 	})
 
 	test('can edit own message', () => {
@@ -379,7 +377,7 @@ describe('message actions', () => {
 				timestamp: new Date('2024-05-01 16:15:00').getTime() / 1000,
 				token: TOKEN,
 				systemMessage: '',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 			})
 		})
 		test('return last editor when message is edited', () => {
@@ -420,5 +418,4 @@ describe('message actions', () => {
 			expect(result.lastEditor.value).toBe('(edited by you)')
 		})
 	})
-
 })

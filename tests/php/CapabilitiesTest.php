@@ -26,6 +26,7 @@ use OCP\TaskProcessing\TaskTypes\TextToTextFormalization;
 use OCP\TaskProcessing\TaskTypes\TextToTextSummary;
 use OCP\TaskProcessing\TaskTypes\TextToTextTranslate;
 use OCP\Translation\ITranslationManager;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use Test\TestCase;
 
@@ -109,6 +110,15 @@ class CapabilitiesTest extends TestCase {
 				['core', 'backgroundjobs_mode', 'ajax', 'cron'],
 			]);
 
+		$this->appConfig->method('getAppValueInt')
+			->willReturnMap([
+				['max_call_duration', 0, 0],
+				['retention_event_rooms', 28, 28],
+				['retention_phone_rooms', 7, 7],
+				['retention_instant_meetings', 1, 1],
+				['experiments_guests', 0, 0],
+			]);
+
 		$this->assertInstanceOf(IPublicCapability::class, $capabilities);
 		$this->assertSame([
 			'spreed' => [
@@ -147,6 +157,16 @@ class CapabilitiesTest extends TestCase {
 							'7_library.jpg',
 							'8_space_station.jpg',
 						],
+						'predefined-backgrounds-v2' => [
+							'/img/backgrounds/1_office.jpg',
+							'/img/backgrounds/2_home.jpg',
+							'/img/backgrounds/3_abstract.jpg',
+							'/img/backgrounds/4_beach.jpg',
+							'/img/backgrounds/5_park.jpg',
+							'/img/backgrounds/6_theater.jpg',
+							'/img/backgrounds/7_library.jpg',
+							'/img/backgrounds/8_space_station.jpg',
+						],
 					],
 					'chat' => [
 						'max-length' => 32000,
@@ -161,6 +181,9 @@ class CapabilitiesTest extends TestCase {
 						'force-passwords' => false,
 						'list-style' => 'two-lines',
 						'description-length' => 2000,
+						'retention-event' => 28,
+						'retention-phone' => 7,
+						'retention-instant-meetings' => 1,
 					],
 					'federation' => [
 						'enabled' => false,
@@ -173,6 +196,9 @@ class CapabilitiesTest extends TestCase {
 					],
 					'signaling' => [
 						'session-ping-limit' => 200,
+					],
+					'experiments' => [
+						'enabled' => 0,
 					],
 				],
 				'config-local' => Capabilities::LOCAL_CONFIGS,
@@ -189,9 +215,7 @@ class CapabilitiesTest extends TestCase {
 		];
 	}
 
-	/**
-	 * @dataProvider dataGetCapabilitiesUserAllowed
-	 */
+	#[DataProvider('dataGetCapabilitiesUserAllowed')]
 	public function testGetCapabilitiesUserAllowed(bool $isNotAllowed, bool $canCreate, string $quota, bool $canUpload, int $readPrivacy): void {
 		$capabilities = $this->getCapabilities();
 
@@ -246,6 +270,22 @@ class CapabilitiesTest extends TestCase {
 				['core', 'backgroundjobs_mode', 'ajax', 'cron'],
 			]);
 
+		$this->appConfig->expects($this->any())
+			->method('getAppValueBool')
+			->willReturnMap([
+				['backgrounds_default_for_users', true, true],
+				['backgrounds_upload_users', true, true],
+			]);
+
+		$this->appConfig->method('getAppValueInt')
+			->willReturnMap([
+				['max_call_duration', 0, 0],
+				['retention_event_rooms', 28, 28],
+				['retention_phone_rooms', 7, 7],
+				['retention_instant_meetings', 1, 1],
+				['experiments_users', 0, 0],
+			]);
+
 		$this->assertInstanceOf(IPublicCapability::class, $capabilities);
 		$data = $capabilities->getCapabilities();
 		$this->assertSame([
@@ -287,6 +327,16 @@ class CapabilitiesTest extends TestCase {
 							'7_library.jpg',
 							'8_space_station.jpg',
 						],
+						'predefined-backgrounds-v2' => [
+							'/img/backgrounds/1_office.jpg',
+							'/img/backgrounds/2_home.jpg',
+							'/img/backgrounds/3_abstract.jpg',
+							'/img/backgrounds/4_beach.jpg',
+							'/img/backgrounds/5_park.jpg',
+							'/img/backgrounds/6_theater.jpg',
+							'/img/backgrounds/7_library.jpg',
+							'/img/backgrounds/8_space_station.jpg',
+						],
 					],
 					'chat' => [
 						'max-length' => 32000,
@@ -301,6 +351,9 @@ class CapabilitiesTest extends TestCase {
 						'force-passwords' => false,
 						'list-style' => 'two-lines',
 						'description-length' => 2000,
+						'retention-event' => 28,
+						'retention-phone' => 7,
+						'retention-instant-meetings' => 1,
 					],
 					'federation' => [
 						'enabled' => false,
@@ -313,6 +366,9 @@ class CapabilitiesTest extends TestCase {
 					],
 					'signaling' => [
 						'session-ping-limit' => 50,
+					],
+					'experiments' => [
+						'enabled' => 0,
 					],
 				],
 				'config-local' => Capabilities::LOCAL_CONFIGS,
@@ -347,10 +403,10 @@ class CapabilitiesTest extends TestCase {
 		foreach ($configFeatures as $feature) {
 			foreach (array_keys($configDefinition[$feature]['properties']) as $config) {
 				$suffix = '';
-				if (isset($data['spreed']['config-local'][$feature]) && in_array($config, Capabilities::LOCAL_CONFIGS[$feature])) {
+				if (in_array($config, Capabilities::LOCAL_CONFIGS[$feature])) {
 					$suffix = ' (local)';
 				}
-				$this->assertCapabilityIsDocumented("`config => $feature => $config`" . $suffix);
+				$this->assertCapabilityIsDocumented("`config => $feature => $config`" . $suffix . ' - ');
 			}
 		}
 	}
@@ -395,9 +451,7 @@ class CapabilitiesTest extends TestCase {
 		];
 	}
 
-	/**
-	 * @dataProvider dataTestConfigRecording
-	 */
+	#[DataProvider('dataTestConfigRecording')]
 	public function testConfigRecording(bool $enabled): void {
 		$capabilities = $this->getCapabilities();
 

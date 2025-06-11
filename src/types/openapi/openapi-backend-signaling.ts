@@ -43,7 +43,10 @@ export type components = {
                     /** Format: int64 */
                     "recording-consent": number;
                     "supported-reactions": string[];
+                    /** @description List of file names relative to the spreed/img/backgrounds/ web path, e.g. `2_home.jpg` */
                     "predefined-backgrounds": string[];
+                    /** @description List of file paths relative to the server web root with leading slash, e.g. `/apps/spreed/img/backgrounds/2_home.jpg` */
+                    "predefined-backgrounds-v2": string[];
                     "can-upload-background": boolean;
                     "sip-enabled": boolean;
                     "sip-dialout-enabled": boolean;
@@ -73,6 +76,12 @@ export type components = {
                     "list-style": "two-lines" | "compact";
                     /** Format: int64 */
                     "description-length": number;
+                    /** Format: int64 */
+                    "retention-event": number;
+                    /** Format: int64 */
+                    "retention-phone": number;
+                    /** Format: int64 */
+                    "retention-instant-meetings": number;
                 };
                 federation: {
                     enabled: boolean;
@@ -88,6 +97,10 @@ export type components = {
                     /** Format: int64 */
                     "session-ping-limit": number;
                     "hello-v2-token-key"?: string;
+                };
+                experiments: {
+                    /** Format: int64 */
+                    enabled: number;
                 };
             };
             "config-local": {
@@ -118,6 +131,10 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Random seed used to generate the request checksum */
+                "spreed-signaling-random"?: string;
+                /** @description Checksum over the request body to verify authenticity from the signaling backend */
+                "spreed-signaling-checksum"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };

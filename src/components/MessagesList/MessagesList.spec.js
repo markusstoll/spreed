@@ -6,10 +6,8 @@ import { createLocalVue, shallowMount } from '@vue/test-utils'
 import { cloneDeep } from 'lodash'
 import { createPinia, setActivePinia } from 'pinia'
 import Vuex from 'vuex'
-
 import MessagesList from './MessagesList.vue'
-
-import { ATTENDEE } from '../../constants.ts'
+import { ATTENDEE, MESSAGE } from '../../constants.ts'
 import storeConfig from '../../store/storeConfig.js'
 
 const fakeTimestamp = (value) => new Date(value).getTime() / 1000
@@ -28,7 +26,6 @@ describe('MessagesList.vue', () => {
 		testStoreConfig = cloneDeep(storeConfig)
 		testStoreConfig.modules.messagesStore.getters.getVisualLastReadMessageId
 			= jest.fn().mockReturnValue(getVisualLastReadMessageIdMock)
-		// eslint-disable-next-line import/no-named-as-default-member
 		store = new Vuex.Store(testStoreConfig)
 
 		// scrollTo isn't implemented in JSDOM
@@ -46,7 +43,7 @@ describe('MessagesList.vue', () => {
 		actorDisplayName: 'Alice',
 		actorType: ATTENDEE.ACTOR_TYPE.USERS,
 		message: 'hello',
-		messageType: 'comment',
+		messageType: MESSAGE.TYPE.COMMENT,
 		messageParameters: [],
 		systemMessage: '',
 		timestamp: fakeTimestamp('2024-05-01T12:05:00'),
@@ -58,7 +55,7 @@ describe('MessagesList.vue', () => {
 		actorDisplayName: 'Alice',
 		actorType: ATTENDEE.ACTOR_TYPE.USERS,
 		message: 'how are you ?',
-		messageType: 'comment',
+		messageType: MESSAGE.TYPE.COMMENT,
 		messageParameters: [],
 		systemMessage: '',
 		timestamp: fakeTimestamp('2024-05-01T12:06:00'),
@@ -72,7 +69,7 @@ describe('MessagesList.vue', () => {
 		actorDisplayName: 'Alice',
 		actorType: ATTENDEE.ACTOR_TYPE.USERS,
 		message: 'old hello',
-		messageType: 'comment',
+		messageType: MESSAGE.TYPE.COMMENT,
 		messageParameters: [],
 		systemMessage: '',
 		timestamp: fakeTimestamp('2024-05-01T12:04:00'),
@@ -87,7 +84,7 @@ describe('MessagesList.vue', () => {
 		actorDisplayName: 'Bob',
 		actorType: ATTENDEE.ACTOR_TYPE.USERS,
 		message: 'hello!',
-		messageType: 'comment',
+		messageType: MESSAGE.TYPE.COMMENT,
 		messageParameters: [],
 		systemMessage: '',
 		timestamp: fakeTimestamp('2024-05-01T12:30:00'),
@@ -99,7 +96,7 @@ describe('MessagesList.vue', () => {
 		actorDisplayName: 'Bob',
 		actorType: ATTENDEE.ACTOR_TYPE.USERS,
 		message: 'fine... how about you ?',
-		messageType: 'comment',
+		messageType: MESSAGE.TYPE.COMMENT,
 		messageParameters: [],
 		systemMessage: '',
 		timestamp: fakeTimestamp('2024-05-01T12:31:00'),
@@ -113,7 +110,7 @@ describe('MessagesList.vue', () => {
 		actorDisplayName: 'Bob',
 		actorType: ATTENDEE.ACTOR_TYPE.USERS,
 		message: 'hello?',
-		messageType: 'comment',
+		messageType: MESSAGE.TYPE.COMMENT,
 		messageParameters: [],
 		systemMessage: '',
 		timestamp: fakeTimestamp('2024-05-01T12:32:00'),
@@ -128,7 +125,7 @@ describe('MessagesList.vue', () => {
 		actorDisplayName: 'Alice',
 		actorType: ATTENDEE.ACTOR_TYPE.USERS,
 		message: 'fine as well, thanks!',
-		messageType: 'comment',
+		messageType: MESSAGE.TYPE.COMMENT,
 		messageParameters: [],
 		systemMessage: '',
 		timestamp: 0, // temporary
@@ -140,7 +137,7 @@ describe('MessagesList.vue', () => {
 		 * @param {Array} messagesGroups List of messages that should be grouped
 		 */
 		function testGrouped(...messagesGroups) {
-			messagesGroups.flat().forEach(message => store.commit('addMessage', { token: TOKEN, message }))
+			messagesGroups.flat().forEach((message) => store.commit('addMessage', { token: TOKEN, message }))
 			const wrapper = shallowMount(MessagesList, {
 				localVue,
 				store,
@@ -165,7 +162,7 @@ describe('MessagesList.vue', () => {
 		 * @param {Array} messages List of messages that should not be grouped
 		 */
 		function testNotGrouped(messages) {
-			messages.forEach(message => store.commit('addMessage', { token: TOKEN, message }))
+			messages.forEach((message) => store.commit('addMessage', { token: TOKEN, message }))
 
 			const wrapper = shallowMount(MessagesList, {
 				localVue,
@@ -210,7 +207,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: 'hello',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: '',
 				timestamp: fakeTimestamp('2020-05-09T13:00:00'),
@@ -222,7 +219,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: 'no one here ?',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: '',
 				timestamp: fakeTimestamp('2020-05-10T13:00:00'),
@@ -234,7 +231,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: 'seems no one is there...',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: '',
 				timestamp: 0, // temporary, matches current date
@@ -256,7 +253,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: 'Alice has entered the call',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: 'call_started',
 				timestamp: fakeTimestamp('2020-05-09T13:00:00'),
@@ -268,7 +265,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: 'Alice has exited the call',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: 'call_ended',
 				timestamp: fakeTimestamp('2020-05-09T13:02:00'),
@@ -284,7 +281,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: 'Alice has entered the call',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: 'call_started',
 				timestamp: fakeTimestamp('2020-05-09T13:00:00'),
@@ -296,7 +293,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: 'hello',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: '',
 				timestamp: fakeTimestamp('2020-05-09T13:02:00'),
@@ -312,7 +309,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Talk updates \u2705',
 				actorType: ATTENDEE.ACTOR_TYPE.BOTS,
 				message: 'New in Talk 16',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: '',
 				timestamp: fakeTimestamp('2020-05-09T13:00:00'),
@@ -324,7 +321,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Talk updates \u2705',
 				actorType: ATTENDEE.ACTOR_TYPE.BOTS,
 				message: '- Calls can now be recorded',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: '',
 				timestamp: fakeTimestamp('2020-05-09T13:02:00'),
@@ -340,7 +337,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: 'Alice has entered the call',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: 'call_started',
 				timestamp: fakeTimestamp('2020-05-09T13:00:00'),
@@ -352,7 +349,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.GUESTS,
 				message: 'hello',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: '',
 				timestamp: fakeTimestamp('2020-05-09T13:02:00'),
@@ -368,7 +365,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: 'hello',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: '',
 				timestamp: fakeTimestamp('2024-05-01T12:05:00'),
@@ -384,7 +381,7 @@ describe('MessagesList.vue', () => {
 				lastEditActorDisplayName: 'Alice',
 				lastEditTimestamp: fakeTimestamp('2024-05-01T12:07:00'),
 				message: 'how are you doing?',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				messageParameters: [],
 				systemMessage: '',
 				timestamp: fakeTimestamp('2024-05-01T12:06:00'),
@@ -400,7 +397,7 @@ describe('MessagesList.vue', () => {
 		 * @param {Array} messagesGroups initial messages groups
 		 */
 		function renderMessagesList(...messagesGroups) {
-			messagesGroups.flat().forEach(message => store.commit('addMessage', { token: TOKEN, message }))
+			messagesGroups.flat().forEach((message) => store.commit('addMessage', { token: TOKEN, message }))
 			return shallowMount(MessagesList, {
 				localVue,
 				store,
@@ -466,7 +463,7 @@ describe('MessagesList.vue', () => {
 			const wrapper = renderMessagesList(messagesGroup1)
 
 			// Act: add new group to the store
-			messagesGroup2.forEach(message => store.commit('addMessage', { token: TOKEN, message }))
+			messagesGroup2.forEach((message) => store.commit('addMessage', { token: TOKEN, message }))
 			await wrapper.vm.$nextTick()
 
 			// Assert: old group nextMessageId is updated, new group is added
@@ -586,7 +583,7 @@ describe('MessagesList.vue', () => {
 				actorDisplayName: 'Alice',
 				actorType: ATTENDEE.ACTOR_TYPE.USERS,
 				message: '{actor} cleared the history of the conversation',
-				messageType: 'system',
+				messageType: MESSAGE.TYPE.SYSTEM,
 				messageParameters: [],
 				systemMessage: 'history_cleared',
 				timestamp: fakeTimestamp('2024-05-01T13:00:00'),

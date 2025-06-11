@@ -8,6 +8,7 @@ OC.L10N.register(
     "Unknown filetype" : "Onbekende lêertipe",
     "Description" : "Beskrywing",
     "Accept" : "Aanvaar",
+    "New message" : "Nuwe boodskap",
     "Open settings" : "Open instellings",
     "error" : "fout",
     "Andorra" : "Andorra",
@@ -284,6 +285,7 @@ OC.L10N.register(
     "Edit" : "Wysig",
     "Delete" : "Skrap",
     "Notifications" : "Kennisgewings",
+    "Join" : "Sluit aan",
     "Log in" : "Teken Aan",
     "Remove from favorites" : "Verwyder uit gunstelinge",
     "Add to favorites" : "Voeg by gunstelinge",
@@ -303,7 +305,6 @@ OC.L10N.register(
     "Enter password" : "Voer wagwoord in",
     "Send" : "Stuur",
     "Settings" : "Instellings",
-    "Join" : "Sluit aan",
     "guest" : "gas",
     "Remove participant" : "Verwyder deelnemer",
     "Promote to moderator" : "Bevorder na moderator",
@@ -312,6 +313,7 @@ OC.L10N.register(
     "Privacy" : "Privaatheid",
     "Keyboard shortcuts" : "Sneltoetse",
     "Search" : "Soek",
+    "Keep" : "Hou",
     "Select a region" : "Kies ’n streek",
     "Submit" : "Dien in",
     "User" : "Gebruiker",
@@ -332,8 +334,6 @@ OC.L10N.register(
     "iOS app" : "iOS-toep",
     "__language_name__" : "Afrikaans",
     "Tasks" : "Take",
-    "Loading" : "Laai tans..",
-    "Close" : "Sluit",
-    "Password protect" : "Beskerm met 'n wagwoord"
+    "Close" : "Sluit"
 },
 "nplurals=2; plural=(n != 1);");

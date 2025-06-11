@@ -308,6 +308,17 @@
 </template>
 
 <script>
+import { showError, showSuccess } from '@nextcloud/dialogs'
+import { emit } from '@nextcloud/event-bus'
+import { t } from '@nextcloud/l10n'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActionSeparator from '@nextcloud/vue/components/NcActionSeparator'
+import NcActionText from '@nextcloud/vue/components/NcActionText'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
+import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcListItem from '@nextcloud/vue/components/NcListItem'
+import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import Account from 'vue-material-design-icons/Account.vue'
 import AccountMinusIcon from 'vue-material-design-icons/AccountMinus.vue'
 import AccountPlusIcon from 'vue-material-design-icons/AccountPlus.vue'
@@ -329,33 +340,18 @@ import PhoneInTalk from 'vue-material-design-icons/PhoneInTalk.vue'
 import PhonePaused from 'vue-material-design-icons/PhonePaused.vue'
 import Tune from 'vue-material-design-icons/Tune.vue'
 import VideoIcon from 'vue-material-design-icons/Video.vue'
-
-import { showError, showSuccess } from '@nextcloud/dialogs'
-import { emit } from '@nextcloud/event-bus'
-import { t } from '@nextcloud/l10n'
-
-import NcActionButton from '@nextcloud/vue/components/NcActionButton'
-import NcActionSeparator from '@nextcloud/vue/components/NcActionSeparator'
-import NcActionText from '@nextcloud/vue/components/NcActionText'
-import NcButton from '@nextcloud/vue/components/NcButton'
-import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
-import NcDialog from '@nextcloud/vue/components/NcDialog'
-import NcListItem from '@nextcloud/vue/components/NcListItem'
-import NcTextArea from '@nextcloud/vue/components/NcTextArea'
-
-import ParticipantPermissionsEditor from './ParticipantPermissionsEditor.vue'
 import AvatarWrapper from '../../AvatarWrapper/AvatarWrapper.vue'
 import DialpadPanel from '../../UIShared/DialpadPanel.vue'
-
+import ParticipantPermissionsEditor from './ParticipantPermissionsEditor.vue'
 import { useIsInCall } from '../../../composables/useIsInCall.js'
-import { CONVERSATION, PARTICIPANT, ATTENDEE, WEBINAR } from '../../../constants.ts'
+import { ATTENDEE, CONVERSATION, PARTICIPANT, WEBINAR } from '../../../constants.ts'
 import {
 	callSIPDialOut,
 	callSIPHangupPhone,
 	callSIPHoldPhone,
 	callSIPMutePhone,
-	callSIPUnmutePhone,
 	callSIPSendDTMF,
+	callSIPUnmutePhone,
 } from '../../../services/callsService.js'
 import { hasTalkFeature } from '../../../services/CapabilitiesManager.ts'
 import { formattedTime } from '../../../utils/formattedTime.ts'
@@ -478,33 +474,33 @@ export default {
 				return undefined
 			}
 			switch (this.$store.getters.getPhoneMute(this.participant.callId)) {
-			case PARTICIPANT.SIP_DIALOUT_FLAG.MUTE_MICROPHONE: {
-				return 'muted'
-			}
-			case PARTICIPANT.SIP_DIALOUT_FLAG.MUTE_SPEAKER | PARTICIPANT.SIP_DIALOUT_FLAG.MUTE_MICROPHONE: {
-				return 'hold'
-			}
-			case PARTICIPANT.SIP_DIALOUT_FLAG.NONE:
-			default: {
-				return undefined
-			}
+				case PARTICIPANT.SIP_DIALOUT_FLAG.MUTE_MICROPHONE: {
+					return 'muted'
+				}
+				case PARTICIPANT.SIP_DIALOUT_FLAG.MUTE_SPEAKER | PARTICIPANT.SIP_DIALOUT_FLAG.MUTE_MICROPHONE: {
+					return 'hold'
+				}
+				case PARTICIPANT.SIP_DIALOUT_FLAG.NONE:
+				default: {
+					return undefined
+				}
 			}
 		},
 
 		statusMessage() {
 			if (this.isInCall && this.phoneCallStatus) {
 				switch (this.phoneCallStatus) {
-				case 'ringing':
-					return '📞 ' + t('spreed', 'Ringing …')
-				case 'rejected':
-					return '⚠️ ' + t('spreed', 'Call rejected')
-				case 'accepted':
-				case 'cleared':
-					return ''
-				case 'connected':
-				default:
+					case 'ringing':
+						return '📞 ' + t('spreed', 'Ringing …')
+					case 'rejected':
+						return '⚠️ ' + t('spreed', 'Call rejected')
+					case 'accepted':
+					case 'cleared':
+						return ''
+					case 'connected':
+					default:
 					// Fall through to show the talking time
-					break
+						break
 				}
 			}
 
@@ -677,28 +673,25 @@ export default {
 
 		removeParticipantLabel() {
 			switch (this.participant.actorType) {
-			case ATTENDEE.ACTOR_TYPE.GROUPS:
-				return t('spreed', 'Remove group and members')
-			case ATTENDEE.ACTOR_TYPE.CIRCLES:
-				return t('spreed', 'Remove team and members')
-			case ATTENDEE.ACTOR_TYPE.USERS:
-			default:
-				return t('spreed', 'Remove participant')
+				case ATTENDEE.ACTOR_TYPE.GROUPS:
+					return t('spreed', 'Remove group and members')
+				case ATTENDEE.ACTOR_TYPE.CIRCLES:
+					return t('spreed', 'Remove team and members')
+				case ATTENDEE.ACTOR_TYPE.USERS:
+				default:
+					return t('spreed', 'Remove participant')
 			}
 		},
 
 		removeDialogMessage() {
 			switch (this.participant.actorType) {
-			case ATTENDEE.ACTOR_TYPE.GROUPS:
-				return t('spreed', 'Do you really want to remove group "{displayName}" and its members from this conversation?',
-					{ displayName: this.computedName }, undefined, { escape: false, sanitize: false })
-			case ATTENDEE.ACTOR_TYPE.CIRCLES:
-				return t('spreed', 'Do you really want to remove team "{displayName}" and its members from this conversation?',
-					{ displayName: this.computedName }, undefined, { escape: false, sanitize: false })
-			case ATTENDEE.ACTOR_TYPE.USERS:
-			default:
-				return t('spreed', 'Do you really want to remove {displayName} from this conversation?',
-					{ displayName: this.computedName }, undefined, { escape: false, sanitize: false })
+				case ATTENDEE.ACTOR_TYPE.GROUPS:
+					return t('spreed', 'Do you really want to remove group "{displayName}" and its members from this conversation?', { displayName: this.computedName }, undefined, { escape: false, sanitize: false })
+				case ATTENDEE.ACTOR_TYPE.CIRCLES:
+					return t('spreed', 'Do you really want to remove team "{displayName}" and its members from this conversation?', { displayName: this.computedName }, undefined, { escape: false, sanitize: false })
+				case ATTENDEE.ACTOR_TYPE.USERS:
+				default:
+					return t('spreed', 'Do you really want to remove {displayName} from this conversation?', { displayName: this.computedName }, undefined, { escape: false, sanitize: false })
 			}
 		},
 
@@ -788,7 +781,7 @@ export default {
 			if (!value || !(value === 'ringing' || value === 'accepted')) {
 				this.disabled = false
 			}
-		}
+		},
 	},
 
 	methods: {
@@ -922,7 +915,7 @@ export default {
 				this.disabled = false
 				if (error?.response?.data?.ocs?.data?.message) {
 					showError(t('spreed', 'Phone number could not be called: {error}', {
-						error: error?.response?.data?.ocs?.data?.message
+						error: error?.response?.data?.ocs?.data?.message,
 					}))
 				} else {
 					console.error(error)
@@ -940,6 +933,7 @@ export default {
 				this.disabled = false
 			}
 		},
+
 		async holdPhoneNumber() {
 			try {
 				await callSIPHoldPhone(this.sessionIds[0])
@@ -951,6 +945,7 @@ export default {
 				showError(t('spreed', 'Phone number could not be put on hold'))
 			}
 		},
+
 		async mutePhoneNumber() {
 			try {
 				await callSIPMutePhone(this.sessionIds[0])
@@ -962,6 +957,7 @@ export default {
 				showError(t('spreed', 'Phone number could not be muted'))
 			}
 		},
+
 		async unmutePhoneNumber() {
 			try {
 				await callSIPUnmutePhone(this.sessionIds[0])
@@ -973,6 +969,7 @@ export default {
 				showError(t('spreed', 'Phone number could not be unmuted'))
 			}
 		},
+
 		async dialType(value) {
 			try {
 				await callSIPSendDTMF(this.sessionIds[0], value)

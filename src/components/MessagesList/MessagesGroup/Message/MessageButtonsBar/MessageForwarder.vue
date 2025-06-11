@@ -41,18 +41,14 @@
 
 <script>
 
-import { inject, ref } from 'vue'
-
-import Check from 'vue-material-design-icons/Check.vue'
-
 import { showError } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
-
+import { inject, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
-
+import Check from 'vue-material-design-icons/Check.vue'
 import RoomSelector from '../../../../RoomSelector.vue'
 
 export default {
@@ -71,6 +67,7 @@ export default {
 			type: String,
 			required: true,
 		},
+
 		id: {
 			type: [String, Number],
 			required: true,
@@ -113,7 +110,7 @@ export default {
 				const response = await this.$store.dispatch('forwardMessage', {
 					targetToken: this.selectedConversationToken,
 					messageToBeForwarded: this.$store.getters.message(this.token, this.id),
-				 })
+				})
 				this.forwardedMessageID = response.data.ocs.data.id
 				this.showForwardedConfirmation = true
 			} catch (error) {
@@ -137,7 +134,7 @@ export default {
 					params: {
 						token: `${this.selectedConversationToken}`,
 					},
-				}).catch(err => console.debug(`Error while pushing the new conversation's route: ${err}`))
+				}).catch((err) => console.debug(`Error while pushing the new conversation's route: ${err}`))
 			}
 
 			this.showForwardedConfirmation = false

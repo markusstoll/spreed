@@ -93,6 +93,13 @@ export const mockedCapabilities: Capabilities = {
 			'schedule-meeting',
 			'edit-draft-poll',
 			'conversation-creation-all',
+			'important-conversations',
+			'unbind-conversation',
+			'sip-direct-dialin',
+			'dashboard-event-rooms',
+			'mutual-calendar-events',
+			'upcoming-reminders',
+			'sensitive-conversations',
 			// Conditional features
 			'message-expiration',
 			'reactions',
@@ -113,6 +120,12 @@ export const mockedCapabilities: Capabilities = {
 			'chat-summary-api',
 			'call-notification-state-api',
 			'schedule-meeting',
+			'conversation-creation-all',
+			'important-conversations',
+			'sip-direct-dialin',
+			'dashboard-event-rooms',
+			'mutual-calendar-events',
+			'upcoming-reminders',
 		],
 		config: {
 			attachments: {
@@ -125,7 +138,8 @@ export const mockedCapabilities: Capabilities = {
 				recording: true,
 				'recording-consent': 0,
 				'supported-reactions': ['❤️', '🎉', '👏', '👍', '👎', '😂', '🤩', '🤔', '😲', '😥'],
-				'predefined-backgrounds': ['1_office', '2_home', '3_abstract'],
+				'predefined-backgrounds': ['1_office.jpg', '2_home.jpg', '3_abstract.jpg'],
+				'predefined-backgrounds-v2': ['/apps/spreed/img/backgrounds/1_office.jpg', '/apps/spreed/img/backgrounds/2_home.jpg', '/apps/spreed/img/backgrounds/3_abstract.jpg'],
 				'can-upload-background': true,
 				'sip-enabled': true,
 				'sip-dialout-enabled': true,
@@ -148,6 +162,9 @@ export const mockedCapabilities: Capabilities = {
 				'force-passwords': false,
 				'list-style': 'two-lines',
 				'description-length': 2000,
+				'retention-event': 28,
+				'retention-phone': 7,
+				'retention-instant-meetings': 1,
 			},
 			federation: {
 				enabled: false,
@@ -161,6 +178,9 @@ export const mockedCapabilities: Capabilities = {
 			signaling: {
 				'session-ping-limit': 200,
 				'hello-v2-token-key': '123',
+			},
+			experiments: {
+				enabled: 0,
 			},
 		},
 		'config-local': {
@@ -199,9 +219,12 @@ export const mockedCapabilities: Capabilities = {
 				'session-ping-limit',
 				'hello-v2-token-key',
 			],
+			experiments: [
+				'enabled',
+			],
 		},
 		version: '20.0.0-dev.0',
-	}
+	},
 }
 
 export const mockedRemotes = {

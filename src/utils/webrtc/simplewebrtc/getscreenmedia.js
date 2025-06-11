@@ -39,7 +39,7 @@ export default function(mode, constraints, cb) {
 	const callback = hasConstraints ? cb : constraints
 	let error
 
-	if (!IS_DESKTOP && (typeof window === 'undefined' || window.location.protocol === 'http:')) {
+	if (typeof window === 'undefined' || window.location.protocol === 'http:') {
 		error = new Error('NavigatorUserMediaError')
 		error.name = 'HTTPS_REQUIRED'
 		return callback(error)
@@ -60,26 +60,26 @@ export default function(mode, constraints, cb) {
 				// "entire-desktop:0:0" is a custom sourceId for this specific case
 				const constraints = (sourceId === 'entire-desktop:0:0')
 					? {
-						audio: {
-							mandatory: {
-								chromeMediaSource: 'desktop',
+							audio: {
+								mandatory: {
+									chromeMediaSource: 'desktop',
+								},
 							},
-						},
-						video: {
-							mandatory: {
-								chromeMediaSource: 'desktop',
+							video: {
+								mandatory: {
+									chromeMediaSource: 'desktop',
+								},
 							},
-						},
-					}
+						}
 					: {
-						audio: false,
-						video: {
-							mandatory: {
-								chromeMediaSource: 'desktop',
-								chromeMediaSourceId: sourceId,
+							audio: false,
+							video: {
+								mandatory: {
+									chromeMediaSource: 'desktop',
+									chromeMediaSourceId: sourceId,
+								},
 							},
-						},
-					}
+						}
 				return navigator.mediaDevices.getUserMedia(constraints)
 			})
 			.then((stream) => callback(null, stream))
@@ -114,8 +114,10 @@ export default function(mode, constraints, cb) {
 		// this has to be set after installation unless the contest
 		// script does that
 		if (sessionStorage.getScreenMediaJSExtensionId) {
-			chrome.runtime.sendMessage(sessionStorage.getScreenMediaJSExtensionId,
-				{ type: 'getScreen', id: 1 }, null,
+			chrome.runtime.sendMessage(
+				sessionStorage.getScreenMediaJSExtensionId,
+				{ type: 'getScreen', id: 1 },
+				null,
 				function(data) {
 					if (!data || data.sourceId === '') { // user canceled
 						const error = new Error('NavigatorUserMediaError')
@@ -136,7 +138,7 @@ export default function(mode, constraints, cb) {
 						constraints.video.mandatory.chromeMediaSourceId = data.sourceId
 						getUserMedia(constraints, callback)
 					}
-				}
+				},
 			)
 		} else if (window.cefGetScreenMedia) {
 			// window.cefGetScreenMedia is experimental - may be removed without notice

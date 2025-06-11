@@ -12,6 +12,7 @@ return array_merge_recursive(
 	include(__DIR__ . '/routes/routesBanController.php'),
 	include(__DIR__ . '/routes/routesBotController.php'),
 	include(__DIR__ . '/routes/routesBreakoutRoomController.php'),
+	include(__DIR__ . '/routes/routesCalendarIntegrationController.php'),
 	include(__DIR__ . '/routes/routesCallController.php'),
 	include(__DIR__ . '/routes/routesCertificateController.php'),
 	include(__DIR__ . '/routes/routesChatController.php'),

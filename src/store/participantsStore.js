@@ -1,3 +1,6 @@
+import { showError, showSuccess } from '@nextcloud/dialogs'
+import { emit } from '@nextcloud/event-bus'
+import { t } from '@nextcloud/l10n'
 /**
  * SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -5,15 +8,6 @@
 import Hex from 'crypto-js/enc-hex.js'
 import SHA1 from 'crypto-js/sha1.js'
 import Vue from 'vue'
-
-import { showError, showSuccess } from '@nextcloud/dialogs'
-import { emit } from '@nextcloud/event-bus'
-import { t } from '@nextcloud/l10n'
-
-import { spawnDialog } from '@nextcloud/vue/dist/Functions/dialog.js'
-
-import ConfirmDialog from '../components/UIShared/ConfirmDialog.vue'
-
 import { ATTENDEE, PARTICIPANT } from '../constants.ts'
 import { banActor } from '../services/banService.ts'
 import {
@@ -23,24 +17,25 @@ import {
 import { hasTalkFeature, setRemoteCapabilities } from '../services/CapabilitiesManager.ts'
 import { EventBus } from '../services/EventBus.ts'
 import {
-	promoteToModerator,
 	demoteFromModerator,
-	removeAttendeeFromConversation,
-	resendInvitations,
-	sendCallNotification,
+	fetchParticipants,
+	grantAllPermissionsToParticipant,
 	joinConversation,
 	leaveConversation,
-	removeCurrentUserFromConversation,
-	grantAllPermissionsToParticipant,
+	promoteToModerator,
 	removeAllPermissionsFromParticipant,
+	removeAttendeeFromConversation,
+	removeCurrentUserFromConversation,
+	resendInvitations,
+	sendCallNotification,
 	setPermissions,
 	setTyping,
-	fetchParticipants,
 } from '../services/participantsService.js'
 import SessionStorage from '../services/SessionStorage.js'
 import { talkBroadcastChannel } from '../services/talkBroadcastChannel.js'
 import { useCallViewStore } from '../stores/callView.ts'
 import { useGuestNameStore } from '../stores/guestName.js'
+import { useSessionStore } from '../stores/session.ts'
 import CancelableRequest from '../utils/cancelableRequest.js'
 import { convertToUnix } from '../utils/formattedTime.ts'
 import { messagePleaseTryToReload } from '../utils/talkDesktopUtils.ts'
@@ -138,7 +133,7 @@ const getters = {
 			return []
 		}
 
-		return Object.keys(state.typing[token]).filter(sessionId => rootGetters.getSessionId() !== sessionId)
+		return Object.keys(state.typing[token]).filter((sessionId) => rootGetters.getSessionId() !== sessionId)
 	},
 
 	/**
@@ -155,7 +150,7 @@ const getters = {
 			return false
 		}
 
-		return Object.keys(state.typing[rootGetters.getToken()]).some(sessionId => rootGetters.getSessionId() === sessionId)
+		return Object.keys(state.typing[rootGetters.getToken()]).some((sessionId) => rootGetters.getSessionId() === sessionId)
 	},
 
 	/**
@@ -173,7 +168,7 @@ const getters = {
 			return []
 		}
 
-		return getters.participantsList(token).filter(attendee => {
+		return getters.participantsList(token).filter((attendee) => {
 			// Check if participant's sessionId matches with any of sessionIds from signaling...
 			return getters.externalTypingSignals(token).some((sessionId) => attendee.sessionIds.includes(sessionId))
 				// ... and it's not the participant with same actorType and actorId as yourself
@@ -255,9 +250,9 @@ const getters = {
 		// Fallback, sometimes actorId and actorType are set before the attendeeId
 		return Object.entries(state.attendees[token]).find(([attendeeId, attendee]) => {
 			return (participantIdentifier.actorType && participantIdentifier.actorId
-					&& attendee.actorType === participantIdentifier.actorType
-					&& attendee.actorId === participantIdentifier.actorId)
-				|| (participantIdentifier.sessionId && attendee.sessionIds.includes(participantIdentifier.sessionId))
+				&& attendee.actorType === participantIdentifier.actorType
+				&& attendee.actorId === participantIdentifier.actorId)
+			|| (participantIdentifier.sessionId && attendee.sessionIds.includes(participantIdentifier.sessionId))
 		})?.[1] ?? null
 	},
 	getPeer: (state) => (token, sessionId, userId) => {
@@ -295,13 +290,13 @@ const getters = {
 
 	participantsInCall: (state) => (token) => {
 		if (state.attendees[token]) {
-			return Object.values(state.attendees[token]).filter(attendee => attendee.inCall !== PARTICIPANT.CALL_FLAG.DISCONNECTED).length
+			return Object.values(state.attendees[token]).filter((attendee) => attendee.inCall !== PARTICIPANT.CALL_FLAG.DISCONNECTED).length
 		}
 		return 0
 	},
 
 	getParticipantBySessionId: (state) => (token, sessionId) => {
-		return Object.values(Object(state.attendees[token])).find(attendee => attendee.sessionIds.includes(sessionId))
+		return Object.values(Object(state.attendees[token])).find((attendee) => attendee.sessionIds.includes(sessionId))
 	},
 }
 
@@ -757,15 +752,16 @@ const actions = {
 	 */
 	async patchParticipants(context, { token, newParticipants, hasUserStatuses }) {
 		const guestNameStore = useGuestNameStore()
+		const sessionStore = useSessionStore()
 
 		const currentParticipants = context.state.attendees[token]
 		for (const attendeeId of Object.keys(Object(currentParticipants))) {
-			if (!newParticipants.some(participant => participant.attendeeId === +attendeeId)) {
+			if (!newParticipants.some((participant) => participant.attendeeId === +attendeeId)) {
 				context.commit('deleteParticipant', { token, attendeeId })
 			}
 		}
 
-		newParticipants.forEach(participant => {
+		newParticipants.forEach((participant) => {
 			if (context.state.attendees[token]?.[participant.attendeeId]) {
 				context.dispatch('updateParticipantIfHasChanged', { token, participant, hasUserStatuses })
 			} else {
@@ -773,6 +769,17 @@ const actions = {
 				if (hasUserStatuses) {
 					emitUserStatusUpdated(participant)
 				}
+			}
+
+			// Heal unknown sessions from participants request
+			// If session.inCall is undefined, this is the best attempt to get the data; but in that case
+			// it will be the same for different sessions, otherwise we trust signaling messages
+			const sessionsToUpdate = sessionStore.orphanSessions.filter((session) => participant.sessionIds.includes(session.sessionId))
+			for (const session of sessionsToUpdate) {
+				sessionStore.updateSession(session.signalingSessionId, {
+					attendeeId: participant.attendeeId,
+					inCall: session.inCall ?? participant.inCall,
+				})
 			}
 
 			if (participant.participantType === PARTICIPANT.TYPE.GUEST
@@ -838,7 +845,7 @@ const actions = {
 		return false
 	},
 
-	async joinCall({ commit, getters, state }, { token, participantIdentifier, flags, silent, recordingConsent }) {
+	async joinCall({ commit, getters, state }, { token, participantIdentifier, flags, silent, recordingConsent, silentFor }) {
 		// SUMMARY: join call process
 		// There are 2 main steps to join a call:
 		// 1. Join the call (signaling-join-call)
@@ -889,7 +896,7 @@ const actions = {
 			finishConnecting()
 			commit('connectionFailed', {
 				token,
-				payload
+				payload,
 			})
 			commit('setInCall', {
 				token,
@@ -899,7 +906,7 @@ const actions = {
 		}
 
 		const handleParticipantsListReceived = (payload, key) => {
-			const participant = payload[0].find(p => p[key] === sessionId)
+			const participant = payload[0].find((p) => p[key] === sessionId)
 			if (participant && participant.inCall !== PARTICIPANT.CALL_FLAG.DISCONNECTED) {
 				if (state.joiningCall[token]?.[sessionId]) {
 					isParticipantsListReceived = true
@@ -934,7 +941,7 @@ const actions = {
 		EventBus.on('signaling-users-changed', handleUsersChanged)
 
 		try {
-			const actualFlags = await joinCall(token, flags, silent, recordingConsent)
+			const actualFlags = await joinCall(token, flags, silent, recordingConsent, silentFor)
 			const updatedData = {
 				inCall: actualFlags,
 			}
@@ -943,7 +950,6 @@ const actions = {
 			callViewStore.handleJoinCall(getters.conversation(token))
 		} catch (e) {
 			console.error('Error while joining call: ', e)
-
 		}
 	},
 
@@ -1001,7 +1007,6 @@ const actions = {
 				showError(t('spreed', 'Error occurred when sending invitations'))
 			}
 		}
-
 	},
 
 	/**
@@ -1058,7 +1063,7 @@ const actions = {
 					console.debug('Force joining automatically because the old session didn\'t ping for 40 seconds')
 					await context.dispatch('forceJoinConversation', { token })
 				} else {
-					await context.dispatch('confirmForceJoinConversation', { token })
+					EventBus.emit('session-conflict-confirmation', token)
 				}
 			} else if (error?.response?.status === 403 && error?.response?.data?.ocs?.data?.error === 'ban') {
 				EventBus.emit('forbidden-route', error.response.data.ocs.data)
@@ -1067,33 +1072,6 @@ const actions = {
 				showError(t('spreed', 'Failed to join the conversation.') + '\n' + messagePleaseTryToReload)
 			}
 		}
-	},
-
-	async confirmForceJoinConversation(context, { token }) {
-		// FIXME: UI stuff doesn't belong here, should rather
-		// be triggered using a store flag and a dedicated Vue component
-
-		spawnDialog(ConfirmDialog, {
-			name: t('spreed', 'Duplicate session'),
-			message: t('spreed', 'You are trying to join a conversation while having an active session in another window or device. This is currently not supported by Nextcloud Talk. What do you want to do?'),
-			buttons: [
-				{
-					label: t('spreed', 'Leave this page'),
-				},
-				{
-					label: t('spreed', 'Join here'),
-					type: 'primary',
-					callback: () => {
-						context.dispatch('forceJoinConversation', { token })
-						return true
-					},
-				}
-			],
-		}, (result) => {
-			if (!result) {
-				EventBus.emit('duplicate-session-detected')
-			}
-		})
 	},
 
 	async forceJoinConversation(context, { token }) {
@@ -1260,10 +1238,10 @@ const actions = {
 	},
 
 	addPhonesStates(context, { phoneStates }) {
-		Object.values(phoneStates).forEach(phoneState => {
+		Object.values(phoneStates).forEach((phoneState) => {
 			context.commit('setPhoneState', {
 				callid: phoneState.callid,
-				value: phoneState
+				value: phoneState,
 			})
 		})
 	},
@@ -1278,7 +1256,7 @@ const actions = {
 
 	clearConnectionFailed(context, token) {
 		context.commit('clearConnectionFailed', token)
-	}
+	},
 }
 
 export default { state, mutations, getters, actions }

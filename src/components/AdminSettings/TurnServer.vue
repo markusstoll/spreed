@@ -55,8 +55,8 @@
 			@click="testServer">
 			<template #icon>
 				<span v-if="testing" class="icon icon-loading-small" />
-				<AlertCircle v-else-if="testingError" :fill-color="'#E9322D'" />
-				<Check v-else-if="testingSuccess" :fill-color="'#46BA61'" />
+				<AlertCircle v-else-if="testingError" fill-color="#E9322D" />
+				<Check v-else-if="testingSuccess" fill-color="#46BA61" />
 				<Pulse v-else />
 			</template>
 		</NcButton>
@@ -72,23 +72,19 @@
 </template>
 
 <script>
+import { t } from '@nextcloud/l10n'
 import Base64 from 'crypto-js/enc-base64.js'
 import hmacSHA1 from 'crypto-js/hmac-sha1.js'
 import debounce from 'debounce'
 import webrtcSupport from 'webrtcsupport'
-
-import AlertCircle from 'vue-material-design-icons/AlertCircle.vue'
-import Check from 'vue-material-design-icons/Check.vue'
-import Delete from 'vue-material-design-icons/Delete.vue'
-import Pulse from 'vue-material-design-icons/Pulse.vue'
-
-import { t } from '@nextcloud/l10n'
-
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcPasswordField from '@nextcloud/vue/components/NcPasswordField'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-
+import AlertCircle from 'vue-material-design-icons/AlertCircle.vue'
+import Check from 'vue-material-design-icons/Check.vue'
+import Delete from 'vue-material-design-icons/Delete.vue'
+import Pulse from 'vue-material-design-icons/Pulse.vue'
 import { isCertificateValid } from '../../services/certificateService.ts'
 import { convertToUnix } from '../../utils/formattedTime.ts'
 
@@ -112,26 +108,31 @@ export default {
 			default: '',
 			required: true,
 		},
+
 		server: {
 			type: String,
 			default: '',
 			required: true,
 		},
+
 		secret: {
 			type: String,
 			default: '',
 			required: true,
 		},
+
 		protocols: {
 			type: String,
 			default: '',
 			required: true,
 		},
+
 		index: {
 			type: Number,
 			default: -1,
 			required: true,
 		},
+
 		loading: {
 			type: Boolean,
 			default: false,
@@ -154,34 +155,42 @@ export default {
 			get() {
 				return this.server
 			},
+
 			set(value) {
 				this.updateServer(value)
-			}
+			},
 		},
+
 		turnSchemes: {
 			get() {
-				return this.schemesOptions.find(i => i.value === this.schemes)
+				return this.schemesOptions.find((i) => i.value === this.schemes)
 			},
+
 			set(value) {
 				this.updateSchemes(value)
-			}
+			},
 		},
+
 		turnProtocols: {
 			get() {
-				return this.protocolOptions.find(i => i.value === this.protocols)
+				return this.protocolOptions.find((i) => i.value === this.protocols)
 			},
+
 			set(value) {
 				this.updateProtocols(value)
-			}
+			},
 		},
+
 		turnSecret: {
 			get() {
 				return this.secret
 			},
+
 			set(value) {
 				this.updateSecret(value)
 			},
 		},
+
 		turnServerError() {
 			if (this.schemes.includes('turns') && /^(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?$/.test(this.server.trim())) {
 				return t('spreed', '{schema} scheme must be used with a domain', { schema: 'turns:' })
@@ -189,6 +198,7 @@ export default {
 
 			return false
 		},
+
 		protocolOptions() {
 			return [
 				{ value: 'udp,tcp', label: t('spreed', '{option1} and {option2}', { option1: 'UDP', option2: 'TCP' }) },
@@ -196,6 +206,7 @@ export default {
 				{ value: 'tcp', label: t('spreed', '{option} only', { option: 'TCP' }) },
 			]
 		},
+
 		schemesOptions() {
 			return [
 				{ value: 'turn,turns', label: t('spreed', '{option1} and {option2}', { option1: 'turn:', option2: 'turns:' }) },
@@ -203,6 +214,7 @@ export default {
 				{ value: 'turns', label: t('spreed', '{option} only', { option: 'turns:' }) },
 			]
 		},
+
 		testIconClasses() {
 			return {
 				'icon-category-monitoring': !this.testing && !this.testingError && !this.testingSuccess,
@@ -211,6 +223,7 @@ export default {
 				'icon-checkmark': this.testingSuccess,
 			}
 		},
+
 		testResult() {
 			if (this.testingSuccess) {
 				return t('spreed', 'OK: Successful ICE candidates returned by the TURN server')
@@ -221,6 +234,7 @@ export default {
 			}
 			return t('spreed', 'Test this server')
 		},
+
 		testAvailable() {
 			const schemes = this.schemes.split(',')
 			const protocols = this.protocols.split(',')
@@ -275,6 +289,7 @@ export default {
 				iceServers: [
 					iceServer,
 				],
+
 				iceTransportPolicy: 'relay',
 			}
 			const offerOptions = {
@@ -296,9 +311,7 @@ export default {
 				pc.createDataChannel('status')
 			}
 
-			pc.createOffer(
-				offerOptions,
-			).then(
+			pc.createOffer(offerOptions).then(
 				(description) => {
 					pc.setLocalDescription(description)
 				},
@@ -386,18 +399,22 @@ export default {
 		removeServer() {
 			this.$emit('remove-server', this.index)
 		},
+
 		updateSchemes(event) {
 			this.$emit('update:schemes', event.value)
 			this.debounceTestServer()
 		},
+
 		updateServer(value) {
 			this.$emit('update:server', value)
 			this.debounceTestServer()
 		},
+
 		updateSecret(value) {
 			this.$emit('update:secret', value)
 			this.debounceTestServer()
 		},
+
 		updateProtocols(event) {
 			this.$emit('update:protocols', event.value)
 			this.debounceTestServer()

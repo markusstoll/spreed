@@ -13,7 +13,7 @@
 		</template>
 
 		<NcActionButtonGroup class="reaction__group"
-			:style="{'--reactions-in-single-row': reactionsInSingleRow}">
+			:style="{ '--reactions-in-single-row': reactionsInSingleRow }">
 			<NcActionButton v-for="(reaction, index) in supportedReactions"
 				:key="index"
 				:aria-label="t('spreed', 'React with {reaction}', { reaction })"
@@ -28,14 +28,12 @@
 </template>
 
 <script>
-import IconEmoticonOutline from 'vue-material-design-icons/EmoticonOutline.vue'
-
 import { emit } from '@nextcloud/event-bus'
 import { t } from '@nextcloud/l10n'
-
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
 import NcActionButtonGroup from '@nextcloud/vue/components/NcActionButtonGroup'
 import NcActions from '@nextcloud/vue/components/NcActions'
+import IconEmoticonOutline from 'vue-material-design-icons/EmoticonOutline.vue'
 
 export default {
 	name: 'ReactionMenu',
@@ -69,7 +67,7 @@ export default {
 		 */
 		supportedReactions: {
 			type: Array,
-			validator: (prop) => prop.every(e => typeof e === 'string'),
+			validator: (prop) => prop.every((e) => typeof e === 'string'),
 			required: true,
 		},
 	},

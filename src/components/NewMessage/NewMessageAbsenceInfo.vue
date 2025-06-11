@@ -19,10 +19,10 @@
 		<p v-if="userAbsencePeriod">{{ userAbsencePeriod }}</p>
 		<div v-if="userAbsence.replacementUserId" class="absence-reminder__replacement">
 			<!-- TRANSLATORS An acting person during the period of absence of the main contact -->
-			<p>{{ t('spreed','Replacement:') }}</p>
+			<p>{{ t('spreed', 'Replacement:') }}</p>
 			<NcUserBubble :key="isDarkTheme ? 'dark' : 'light'"
 				class="absence-reminder__replacement__bubble"
-				:title="t('spreed','Open conversation')"
+				:title="t('spreed', 'Open conversation')"
 				:display-name="userAbsence.replacementUserDisplayName"
 				:user="userAbsence.replacementUserId"
 				@click="openConversationWithReplacementUser" />
@@ -34,27 +34,23 @@
 			:aria-label="!collapsed ? t('spreed', 'Collapse') : t('spreed', 'Expand')"
 			@click="toggleCollapsed">
 			<template #icon>
-				<ChevronUp class="icon" :class="{'icon--reverted': !collapsed}" :size="20" />
+				<ChevronUp class="icon" :class="{ 'icon--reverted': !collapsed }" :size="20" />
 			</template>
 		</NcButton>
-		<p ref="absenceMessage" class="absence-reminder__message" :class="{'absence-reminder__message--collapsed': collapsed}">{{ userAbsenceMessage }}</p>
+		<p ref="absenceMessage" class="absence-reminder__message" :class="{ 'absence-reminder__message--collapsed': collapsed }">{{ userAbsenceMessage }}</p>
 	</NcNoteCard>
 </template>
 
 <script>
-import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
-
 import { getCurrentUser } from '@nextcloud/auth'
 import { t } from '@nextcloud/l10n'
 import moment from '@nextcloud/moment'
-
+import { useIsDarkTheme } from '@nextcloud/vue/composables/useIsDarkTheme'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcUserBubble from '@nextcloud/vue/components/NcUserBubble'
-import { useIsDarkTheme } from '@nextcloud/vue/composables/useIsDarkTheme'
-
+import ChevronUp from 'vue-material-design-icons/ChevronUp.vue'
 import AvatarWrapper from '../AvatarWrapper/AvatarWrapper.vue'
-
 import { AVATAR } from '../../constants.ts'
 
 export default {
@@ -104,7 +100,7 @@ export default {
 		userAbsenceCaption() {
 			return t('spreed', '{user} is out of office and might not respond.', { user: this.displayName }, undefined, {
 				escape: false,
-				sanitize: false
+				sanitize: false,
 			})
 		},
 
@@ -163,8 +159,8 @@ export default {
 				name: 'root',
 				query: {
 					callUser: this.userAbsence.replacementUserId,
-				}
-			}).catch(err => console.debug(`Error while pushing the new conversation's route: ${err}`))
+				},
+			}).catch((err) => console.debug(`Error while pushing the new conversation's route: ${err}`))
 		},
 	},
 }

@@ -48,7 +48,6 @@
  * needed.
  */
 export default (function() {
-
 	/**
 	 * Mixin constructor.
 	 *
@@ -137,7 +136,7 @@ export default (function() {
 
 		// "ended" listener is not removed if the same track is also used in a
 		// different slot.
-		if (this._outputTracks[trackId] && Object.values(this._outputTracks).filter(track => track === this._outputTracks[trackId]).length === 1) {
+		if (this._outputTracks[trackId] && Object.values(this._outputTracks).filter((track) => track === this._outputTracks[trackId]).length === 1) {
 			this._outputTracks[trackId].removeEventListener('ended', this._removeTrackWhenEndedHandlers[this._outputTracks[trackId].id])
 		}
 
@@ -145,7 +144,7 @@ export default (function() {
 
 		// "ended" listener is not added again if the same track is also used in
 		// a different slot.
-		if (this._outputTracks[trackId] && Object.values(this._outputTracks).filter(track => track === this._outputTracks[trackId]).length === 1) {
+		if (this._outputTracks[trackId] && Object.values(this._outputTracks).filter((track) => track === this._outputTracks[trackId]).length === 1) {
 			// The "ended" event may not contain the track that ended (for
 			// example, when triggered from the MediaStreamTrack shim, as
 			// properties like "target" can not be set from the Event
@@ -166,7 +165,7 @@ export default (function() {
 	function _disableRemoveTrackWhenEnded(track) {
 		const trackIds = Object.keys(this._outputTracks)
 
-		trackIds.forEach(trackId => {
+		trackIds.forEach((trackId) => {
 			if (this._outputTracks[trackId] === track) {
 				this._outputTracks[trackId].removeEventListener('ended', this._removeTrackWhenEndedHandlers[this._outputTracks[trackId].id])
 			}
@@ -179,7 +178,7 @@ export default (function() {
 	function _removeTrackWhenEnded(track) {
 		const trackIds = Object.keys(this._outputTracks)
 
-		trackIds.forEach(trackId => {
+		trackIds.forEach((trackId) => {
 			if (this._outputTracks[trackId] === track) {
 				this._setOutputTrack(trackId, null)
 			}

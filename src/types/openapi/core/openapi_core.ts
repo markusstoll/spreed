@@ -238,7 +238,8 @@ export type paths = {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get profile fields for another user */
+        get: operations["profile_api-get-profile-fields"];
         /**
          * Update the visibility of a parameter
          * @description This endpoint requires password confirmation
@@ -1109,6 +1110,33 @@ export type components = {
             thumb: string | null;
             link: string;
         };
+        ProfileAction: {
+            id: string;
+            icon: string;
+            title: string;
+            target: string | null;
+        };
+        ProfileData: components["schemas"]["ProfileFields"] & {
+            /** @description Timezone identifier like Europe/Berlin or America/North_Dakota/Beulah */
+            timezone: string;
+            /**
+             * Format: int64
+             * @description Offset in seconds, negative when behind UTC, positive otherwise
+             */
+            timezoneOffset: number;
+        };
+        ProfileFields: {
+            userId: string;
+            address?: string | null;
+            biography?: string | null;
+            displayname?: string | null;
+            headline?: string | null;
+            isUserAvatarVisible?: boolean;
+            organisation?: string | null;
+            pronouns?: string | null;
+            role?: string | null;
+            actions: components["schemas"]["ProfileAction"][];
+        };
         PublicCapabilities: {
             bruteforce: {
                 /** Format: int64 */
@@ -1318,6 +1346,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                USER_AGENT?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -2131,6 +2160,65 @@ export interface operations {
             };
         };
     };
+    "profile_api-get-profile-fields": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required to be true for the API request to pass */
+                "OCS-APIRequest": boolean;
+            };
+            path: {
+                /** @description ID of the user */
+                targetUserId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Profile data returned successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: components["schemas"]["ProfileData"];
+                        };
+                    };
+                };
+            };
+            /** @description Profile is disabled */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Account not found or disabled */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
     "profile_api-set-visibility": {
         parameters: {
             query?: never;
@@ -2526,6 +2614,7 @@ export interface operations {
                     /**
                      * Format: int64
                      * @description Timestamp of the last usage
+                     * @default null
                      */
                     timestamp?: number | null;
                 };
@@ -2608,9 +2697,15 @@ export interface operations {
                      * @default
                      */
                     customId?: string;
-                    /** @description URI to be requested when the task finishes */
+                    /**
+                     * @description URI to be requested when the task finishes
+                     * @default null
+                     */
                     webhookUri?: string | null;
-                    /** @description Method used for the webhook request (HTTP:GET, HTTP:POST, HTTP:PUT, HTTP:DELETE or AppAPI:APP_ID:GET, AppAPI:APP_ID:POST...) */
+                    /**
+                     * @description Method used for the webhook request (HTTP:GET, HTTP:POST, HTTP:PUT, HTTP:DELETE or AppAPI:APP_ID:GET, AppAPI:APP_ID:POST...)
+                     * @default null
+                     */
                     webhookMethod?: string | null;
                 };
             };
@@ -4233,7 +4328,9 @@ export interface operations {
     "client_flow_login_v2-init": {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                USER_AGENT?: string;
+            };
             path?: never;
             cookie?: never;
         };

@@ -26,7 +26,7 @@
 					class="hidden-visually"
 					@change="handleFileInput">
 				<TransitionWrapper class="upload-editor__previews"
-					:class="{'dragging-over': isDraggingOver}"
+					:class="{ 'dragging-over': isDraggingOver }"
 					name="fade"
 					tag="div"
 					group>
@@ -77,21 +77,17 @@
 </template>
 
 <script>
-import { ref } from 'vue'
-
-import Plus from 'vue-material-design-icons/Plus.vue'
-
 import { t } from '@nextcloud/l10n'
-
+import { ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcModal from '@nextcloud/vue/components/NcModal'
-
-import NewMessage from './NewMessage.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
 import AudioPlayer from '../MessagesList/MessagesGroup/Message/MessagePart/AudioPlayer.vue'
 import FilePreview from '../MessagesList/MessagesGroup/Message/MessagePart/FilePreview.vue'
 import TransitionWrapper from '../UIShared/TransitionWrapper.vue'
-
+import NewMessage from './NewMessage.vue'
 import { useId } from '../../composables/useId.ts'
+import { MESSAGE } from '../../constants.ts'
 import { hasTalkFeature } from '../../services/CapabilitiesManager.ts'
 
 export default {
@@ -153,7 +149,7 @@ export default {
 			if (!this.firstFile) {
 				return false
 			}
-			return this.firstFile.temporaryMessage.messageType === 'voice-message'
+			return this.firstFile.temporaryMessage.messageType === MESSAGE.TYPE.VOICE_MESSAGE
 		},
 
 		voiceMessageName() {
@@ -220,6 +216,7 @@ export default {
 				}
 			}
 		},
+
 		/**
 		 * Clicks the hidden file input when clicking the correspondent NcActionButton,
 		 * thus opening the file-picker

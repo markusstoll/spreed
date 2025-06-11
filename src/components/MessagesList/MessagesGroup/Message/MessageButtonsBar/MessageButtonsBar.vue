@@ -121,7 +121,7 @@
 							</template>
 							{{ t('spreed', 'Go to file') }}
 						</NcActionLink>
-						<NcActionLink :href="linkToFileDownload" :download="messageFile.name">
+						<NcActionLink v-if="!hideDownloadOption" :href="linkToFileDownload" :download="messageFile.name">
 							<template #icon>
 								<IconDownload :size="20" />
 							</template>
@@ -260,9 +260,21 @@
 </template>
 
 <script>
+import { getCurrentUser } from '@nextcloud/auth'
+import { showError, showSuccess } from '@nextcloud/dialogs'
+import { t } from '@nextcloud/l10n'
+import moment from '@nextcloud/moment'
+import { emojiSearch } from '@nextcloud/vue/functions/emoji'
 import { vOnClickOutside as ClickOutside } from '@vueuse/components'
 import { toRefs } from 'vue'
-
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActionInput from '@nextcloud/vue/components/NcActionInput'
+import NcActionLink from '@nextcloud/vue/components/NcActionLink'
+import NcActions from '@nextcloud/vue/components/NcActions'
+import NcActionSeparator from '@nextcloud/vue/components/NcActionSeparator'
+import NcActionText from '@nextcloud/vue/components/NcActionText'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcEmojiPicker from '@nextcloud/vue/components/NcEmojiPicker'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
 import AlarmIcon from 'vue-material-design-icons/Alarm.vue'
 import IconArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
@@ -286,24 +298,8 @@ import Plus from 'vue-material-design-icons/Plus.vue'
 import Reply from 'vue-material-design-icons/Reply.vue'
 import Share from 'vue-material-design-icons/Share.vue'
 import Translate from 'vue-material-design-icons/Translate.vue'
-
-import { getCurrentUser } from '@nextcloud/auth'
-import { showError, showSuccess } from '@nextcloud/dialogs'
-import { t } from '@nextcloud/l10n'
-import moment from '@nextcloud/moment'
-
-import NcActionButton from '@nextcloud/vue/components/NcActionButton'
-import NcActionInput from '@nextcloud/vue/components/NcActionInput'
-import NcActionLink from '@nextcloud/vue/components/NcActionLink'
-import NcActions from '@nextcloud/vue/components/NcActions'
-import NcActionSeparator from '@nextcloud/vue/components/NcActionSeparator'
-import NcActionText from '@nextcloud/vue/components/NcActionText'
-import NcButton from '@nextcloud/vue/components/NcButton'
-import NcEmojiPicker from '@nextcloud/vue/components/NcEmojiPicker'
-import { emojiSearch } from '@nextcloud/vue/functions/emoji'
-
 import { useMessageInfo } from '../../../../../composables/useMessageInfo.js'
-import { CONVERSATION, ATTENDEE, PARTICIPANT } from '../../../../../constants.ts'
+import { ATTENDEE, CONVERSATION, MESSAGE, PARTICIPANT } from '../../../../../constants.ts'
 import { hasTalkFeature } from '../../../../../services/CapabilitiesManager.ts'
 import { getMessageReminder, removeMessageReminder, setMessageReminder } from '../../../../../services/remindersService.js'
 import { useIntegrationsStore } from '../../../../../stores/integrations.js'
@@ -372,14 +368,17 @@ export default {
 			type: Boolean,
 			required: true,
 		},
+
 		isEmojiPickerOpen: {
 			type: Boolean,
 			required: true,
 		},
+
 		isReactionsMenuOpen: {
 			type: Boolean,
 			required: true,
 		},
+
 		isForwarderOpen: {
 			type: Boolean,
 			required: true,
@@ -413,6 +412,7 @@ export default {
 			isCurrentUserOwnMessage,
 			isFileShare,
 			isFileShareWithoutCaption,
+			hideDownloadOption,
 			isConversationReadOnly,
 			isConversationModifiable,
 		} = useMessageInfo(message)
@@ -426,6 +426,7 @@ export default {
 			isCurrentUserOwnMessage,
 			isFileShare,
 			isFileShareWithoutCaption,
+			hideDownloadOption,
 			isDeleteable,
 			isConversationReadOnly,
 			isConversationModifiable,
@@ -460,7 +461,7 @@ export default {
 		},
 
 		messageFile() {
-			const firstFileKey = (Object.keys(this.message.messageParameters).find(key => key.startsWith('file')))
+			const firstFileKey = (Object.keys(this.message.messageParameters).find((key) => key.startsWith('file')))
 			return this.message.messageParameters[firstFileKey]
 		},
 
@@ -475,11 +476,11 @@ export default {
 		},
 
 		isDeletedMessage() {
-			return this.message.messageType === 'comment_deleted'
+			return this.message.messageType === MESSAGE.TYPE.COMMENT_DELETED
 		},
 
 		isPollMessage() {
-			return this.message.messageType === 'comment'
+			return this.message.messageType === MESSAGE.TYPE.COMMENT
 				&& this.message.messageParameters?.object?.type === 'talk-poll'
 		},
 
@@ -506,6 +507,7 @@ export default {
 			get() {
 				return new Date(this.customReminderTimestamp)
 			},
+
 			set(value) {
 				if (value !== null) {
 					this.customReminderTimestamp = value.valueOf()
@@ -570,7 +572,7 @@ export default {
 					label: t('spreed', 'Next week – {timeLocale}', { timeLocale: moment(nextWeekTime).format('ddd LT') }),
 					ariaLabel: t('spreed', 'Set reminder for next week'),
 				},
-			].filter(option => option.timestamp !== null)
+			].filter((option) => option.timestamp !== null)
 		},
 
 		clearReminderLabel() {
@@ -588,7 +590,7 @@ export default {
 
 		canReply() {
 			return this.message.isReplyable && !this.isConversationReadOnly && (this.conversation.permissions & PARTICIPANT.PERMISSIONS.CHAT) !== 0
-		}
+		},
 	},
 
 	watch: {
@@ -608,7 +610,7 @@ export default {
 		async handlePrivateReply() {
 			// open the 1:1 conversation
 			const conversation = await this.$store.dispatch('createOneToOneConversation', this.message.actorId)
-			this.$router.push({ name: 'conversation', params: { token: conversation.token } }).catch(err => console.debug(`Error while pushing the new conversation's route: ${err}`))
+			this.$router.push({ name: 'conversation', params: { token: conversation.token } }).catch((err) => console.debug(`Error while pushing the new conversation's route: ${err}`))
 		},
 
 		async handleCopyMessageText() {
@@ -687,7 +689,7 @@ export default {
 		async forwardToNote() {
 			try {
 				await this.$store.dispatch('forwardMessage', {
-					messageToBeForwarded: this.$store.getters.message(this.message.token, this.message.id)
+					messageToBeForwarded: this.$store.getters.message(this.message.token, this.message.id),
 				})
 				showSuccess(t('spreed', 'Message forwarded to "Note to self"'))
 			} catch (error) {
@@ -703,7 +705,7 @@ export default {
 		// Making sure that the click is outside the MessageButtonsBar
 		handleClickOutside(event) {
 			// check if click is inside the emoji picker
-			if (event.composedPath().some(element => element.classList?.contains('v-popper__popper--shown'))) {
+			if (event.composedPath().some((element) => element.classList?.contains('v-popper__popper--shown'))) {
 				return
 			}
 
@@ -718,7 +720,7 @@ export default {
 		},
 
 		updateFrequentlyUsedEmojis() {
-			this.frequentlyUsedEmojis = emojiSearch('', 5).map(emoji => emoji.native)
+			this.frequentlyUsedEmojis = emojiSearch('', 5).map((emoji) => emoji.native)
 		},
 
 		async getReminder() {

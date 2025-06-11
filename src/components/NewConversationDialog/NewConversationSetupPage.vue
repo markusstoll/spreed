@@ -64,17 +64,14 @@
 
 <script>
 import { t } from '@nextcloud/l10n'
-
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcPasswordField from '@nextcloud/vue/components/NcPasswordField'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-
 import ConversationAvatarEditor from '../ConversationSettings/ConversationAvatarEditor.vue'
 import ListableSettings from '../ConversationSettings/ListableSettings.vue'
-
 import { CONVERSATION } from '../../constants.ts'
-import { hasTalkFeature, getTalkConfig } from '../../services/CapabilitiesManager.ts'
+import { getTalkConfig, hasTalkFeature } from '../../services/CapabilitiesManager.ts'
 import generatePassword from '../../utils/generatePassword.ts'
 
 const supportsAvatar = hasTalkFeature('local', 'avatar')
@@ -98,14 +95,16 @@ export default {
 			type: Object,
 			required: true,
 		},
+
 		password: {
 			type: String,
 			required: true,
 		},
+
 		listable: {
 			type: Number,
 			required: true,
-		}
+		},
 	},
 
 	emits: ['update:newConversation', 'update:password', 'update:listable', 'avatar-edited', 'handle-enter', 'is-password-valid'],
@@ -122,6 +121,7 @@ export default {
 			get() {
 				return this.newConversation.displayName
 			},
+
 			set(displayName) {
 				this.updateNewConversation({ displayName })
 			},
@@ -131,6 +131,7 @@ export default {
 			get() {
 				return this.newConversation.description
 			},
+
 			set(description) {
 				this.updateNewConversation({ description })
 			},
@@ -154,6 +155,7 @@ export default {
 			get() {
 				return this.newConversation.type === CONVERSATION.TYPE.PUBLIC
 			},
+
 			async set(value) {
 				if (value) {
 					this.updateNewConversation({ type: CONVERSATION.TYPE.PUBLIC, hasPassword: this.forcePasswordProtection ?? false })
@@ -171,6 +173,7 @@ export default {
 			get() {
 				return this.newConversation.hasPassword
 			},
+
 			set(value) {
 				this.updateNewConversation({ hasPassword: value })
 				if (!value) {
@@ -183,6 +186,7 @@ export default {
 			get() {
 				return this.password
 			},
+
 			set(value) {
 				this.$emit('update:password', value)
 			},
@@ -192,6 +196,7 @@ export default {
 			get() {
 				return this.listable
 			},
+
 			set(value) {
 				this.$emit('update:listable', value)
 			},

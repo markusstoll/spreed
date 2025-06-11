@@ -11,14 +11,16 @@
 		:data-next-message-id="nextMessageId"
 		:data-previous-message-id="previousMessageId"
 		class="message"
-		:class="{'message--hovered': showMessageButtonsBar}"
+		:class="{ 'message--hovered': showMessageButtonsBar }"
 		tabindex="0"
 		@animationend="clearHighlightedClass"
 		@mouseover="handleMouseover"
 		@mouseleave="handleMouseleave">
-		<div :class="{'normal-message-body': !isSystemMessage && !isDeletedMessage,
-			'system' : isSystemMessage,
-			'combined-system': isCombinedSystemMessage}"
+		<div :class="{
+				'normal-message-body': !isSystemMessage && !isDeletedMessage,
+				system: isSystemMessage,
+				'combined-system': isCombinedSystemMessage,
+			}"
 			class="message-body">
 			<MessageBody :rich-parameters="richParameters"
 				:is-deleting="isDeleting"
@@ -97,18 +99,14 @@
 </template>
 
 <script>
+import { showError, showSuccess, showWarning, TOAST_DEFAULT_TIMEOUT } from '@nextcloud/dialogs'
+import { t } from '@nextcloud/l10n'
 import { vIntersectionObserver as IntersectionObserver } from '@vueuse/components'
-
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import IconCreation from 'vue-material-design-icons/Creation.vue'
 import IconUnfoldLess from 'vue-material-design-icons/UnfoldLessHorizontal.vue'
 import IconUnfoldMore from 'vue-material-design-icons/UnfoldMoreHorizontal.vue'
-
-import { showError, showSuccess, showWarning, TOAST_DEFAULT_TIMEOUT } from '@nextcloud/dialogs'
-import { t } from '@nextcloud/l10n'
-
-import NcButton from '@nextcloud/vue/components/NcButton'
-import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
-
 import MessageButtonsBar from './MessageButtonsBar/MessageButtonsBar.vue'
 import MessageForwarder from './MessageButtonsBar/MessageForwarder.vue'
 import MessageTranslateDialog from './MessageButtonsBar/MessageTranslateDialog.vue'
@@ -121,8 +119,7 @@ import Mention from './MessagePart/Mention.vue'
 import MessageBody from './MessagePart/MessageBody.vue'
 import Poll from './MessagePart/Poll.vue'
 import Reactions from './MessagePart/Reactions.vue'
-
-import { CONVERSATION, MENTION, PARTICIPANT } from '../../../../constants.ts'
+import { CONVERSATION, MENTION, MESSAGE, PARTICIPANT } from '../../../../constants.ts'
 import { getTalkConfig, hasTalkFeature } from '../../../../services/CapabilitiesManager.ts'
 import { EventBus } from '../../../../services/EventBus.ts'
 import { useChatExtrasStore } from '../../../../stores/chatExtras.js'
@@ -156,6 +153,7 @@ export default {
 			type: Object,
 			required: true,
 		},
+
 		/**
 		 * Specifies if the message is a combined system message.
 		 */
@@ -163,6 +161,7 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+
 		/**
 		 * Specifies whether the combined system message is collapsed.
 		 */
@@ -170,6 +169,7 @@ export default {
 			type: Boolean,
 			default: undefined,
 		},
+
 		/**
 		 * Specifies if the message is inside a collapsed group.
 		 */
@@ -177,14 +177,17 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+
 		lastCollapsedMessageId: {
 			type: [String, Number],
 			default: 0,
 		},
+
 		previousMessageId: {
 			type: [String, Number],
 			default: 0,
 		},
+
 		nextMessageId: {
 			type: [String, Number],
 			default: 0,
@@ -260,7 +263,7 @@ export default {
 		},
 
 		isDeletedMessage() {
-			return this.message.messageType === 'comment_deleted'
+			return this.message.messageType === MESSAGE.TYPE.COMMENT_DELETED
 		},
 
 		conversation() {
@@ -288,7 +291,7 @@ export default {
 				const mimetype = this.message.messageParameters[p].mimetype
 				const itemType = getItemTypeFromMessage({
 					messageParameters: this.message.messageParameters,
-					messageType: this.message.messageType
+					messageType: this.message.messageType,
 				})
 				if (Object.values(MENTION.TYPE).includes(type)) {
 					richParameters[p] = {
@@ -368,8 +371,8 @@ export default {
 		canReact() {
 			return this.conversation.readOnly !== CONVERSATION.STATE.READ_ONLY
 				&& (this.conversation.permissions & PARTICIPANT.PERMISSIONS.CHAT) !== 0
-				&& this.message.messageType !== 'command'
-				&& this.message.messageType !== 'comment_deleted'
+				&& this.message.messageType !== MESSAGE.TYPE.COMMAND
+				&& this.message.messageType !== MESSAGE.TYPE.COMMENT_DELETED
 		},
 	},
 
@@ -449,6 +452,7 @@ export default {
 		toggleCombinedSystemMessage() {
 			this.$emit('toggle-combined-system-message')
 		},
+
 		toggleFollowUpEmojiPicker() {
 			this.isFollowUpEmojiPickerOpen = !this.isFollowUpEmojiPickerOpen
 		},
@@ -457,7 +461,7 @@ export default {
 			this.loading = true
 			await this.chatExtrasStore.requestChatSummary(this.message.token, this.message.id)
 			this.loading = false
-		}
+		},
 	},
 }
 </script>

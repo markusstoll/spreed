@@ -8,8 +8,10 @@
 	are outside of the viewport -->
 	<div ref="scroller"
 		class="scroller messages-list__scroller"
-		:class="{'scroller--chatScrolledToBottom': isChatScrolledToBottom,
-			'scroller--isScrolling': isScrolling}"
+		:class="{
+			'scroller--chatScrolledToBottom': isChatScrolledToBottom,
+			'scroller--isScrolling': isScrolling,
+		}"
 		@scroll="onScroll"
 		@scrollend="endScroll">
 		<TransitionWrapper name="fade">
@@ -56,32 +58,27 @@
 </template>
 
 <script>
+import Axios from '@nextcloud/axios'
+import { subscribe, unsubscribe } from '@nextcloud/event-bus'
+import { n, t } from '@nextcloud/l10n'
+import moment from '@nextcloud/moment'
 import debounce from 'debounce'
 import uniqueId from 'lodash/uniqueId.js'
 import { computed } from 'vue'
-
-import Message from 'vue-material-design-icons/Message.vue'
-
-import Axios from '@nextcloud/axios'
-import { subscribe, unsubscribe } from '@nextcloud/event-bus'
-import { t, n } from '@nextcloud/l10n'
-import moment from '@nextcloud/moment'
-
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
-
-import MessagesGroup from './MessagesGroup/MessagesGroup.vue'
-import MessagesSystemGroup from './MessagesGroup/MessagesSystemGroup.vue'
+import Message from 'vue-material-design-icons/Message.vue'
 import LoadingPlaceholder from '../UIShared/LoadingPlaceholder.vue'
 import TransitionWrapper from '../UIShared/TransitionWrapper.vue'
-
+import MessagesGroup from './MessagesGroup/MessagesGroup.vue'
+import MessagesSystemGroup from './MessagesGroup/MessagesSystemGroup.vue'
 import { useDocumentVisibility } from '../../composables/useDocumentVisibility.ts'
 import { useIsInCall } from '../../composables/useIsInCall.js'
 import { ATTENDEE, CHAT, CONVERSATION, MESSAGE } from '../../constants.ts'
 import { EventBus } from '../../services/EventBus.ts'
 import { useChatExtrasStore } from '../../stores/chatExtras.js'
 import { debugTimer } from '../../utils/debugTimer.ts'
-import { ONE_DAY_IN_MS, convertToUnix } from '../../utils/formattedTime.ts'
+import { convertToUnix, ONE_DAY_IN_MS } from '../../utils/formattedTime.ts'
 
 const SCROLL_TOLERANCE = 10
 
@@ -92,7 +89,7 @@ export default {
 		Message,
 		NcEmptyContent,
 		NcLoadingIcon,
-		TransitionWrapper
+		TransitionWrapper,
 	},
 
 	provide() {
@@ -257,9 +254,9 @@ export default {
 		},
 
 		isChatBeginningReached() {
-			return this.stopFetchingOldMessages || (this.messagesList?.[0]?.messageType === 'system'
+			return this.stopFetchingOldMessages || (this.messagesList?.[0]?.messageType === MESSAGE.TYPE.SYSTEM
 				&& ['conversation_created', 'history_cleared'].includes(this.messagesList[0].systemMessage))
-		}
+		},
 	},
 
 	watch: {
@@ -268,6 +265,7 @@ export default {
 				this.onWindowFocus()
 			}
 		},
+
 		chatIdentifier: {
 			immediate: true,
 			handler(newValue, oldValue) {
@@ -307,7 +305,6 @@ export default {
 						this.updateTasksCount()
 					}
 				})
-
 			},
 		},
 
@@ -448,7 +445,7 @@ export default {
 		softUpdateByDateGroups(oldDateGroups, newDateGroups) {
 			const dateTimestamps = new Set([...Object.keys(oldDateGroups), ...Object.keys(newDateGroups)])
 
-			dateTimestamps.forEach(dateTimestamp => {
+			dateTimestamps.forEach((dateTimestamp) => {
 				if (newDateGroups[dateTimestamp]) {
 					if (oldDateGroups[dateTimestamp]) {
 						// the group by date has changed, we update its content (groups by author)
@@ -467,7 +464,7 @@ export default {
 		softUpdateAuthorGroups(oldGroups, newGroups, dateTimestamp) {
 			const groupIds = new Set([...Object.keys(oldGroups), ...Object.keys(newGroups)])
 
-			groupIds.forEach(id => {
+			groupIds.forEach((id) => {
 				if (oldGroups[id] && !newGroups[id]) {
 					// group no longer exists, remove
 					this.$delete(this.messagesGroupedByDateByAuthor[dateTimestamp], id)
@@ -542,9 +539,9 @@ export default {
 
 			if (!message1IsSystem // System messages are grouped independently of author
 				&& ((message1.actorType !== message2.actorType // Otherwise the type and id need to match
-						|| message1.actorId !== message2.actorId)
-					|| (message1.actorType === ATTENDEE.ACTOR_TYPE.BRIDGED // Or, if the message is bridged, display names also need to match
-						&& message1.actorDisplayName !== message2.actorDisplayName))) {
+					|| message1.actorId !== message2.actorId)
+				|| (message1.actorType === ATTENDEE.ACTOR_TYPE.BRIDGED // Or, if the message is bridged, display names also need to match
+					&& message1.actorDisplayName !== message2.actorDisplayName))) {
 				return false
 			}
 
@@ -562,14 +559,14 @@ export default {
 
 		getRelativePrefix(diffDays) {
 			switch (diffDays) {
-			case 0:
-				return t('spreed', 'Today')
-			case 1:
-				return t('spreed', 'Yesterday')
-			case 7:
-				return t('spreed', 'A week ago')
-			default:
-				return n('spreed', '%n day ago', '%n days ago', diffDays)
+				case 0:
+					return t('spreed', 'Today')
+				case 1:
+					return t('spreed', 'Yesterday')
+				case 7:
+					return t('spreed', 'A week ago')
+				default:
+					return n('spreed', '%n day ago', '%n days ago', diffDays)
 			}
 		},
 
@@ -596,7 +593,6 @@ export default {
 			} else {
 				return moment(startOfDay).format('LL')
 			}
-
 		},
 
 		/**
@@ -700,7 +696,6 @@ export default {
 
 				// Once the history is received, starts looking for new messages.
 				await this.pollNewMessages(token)
-
 			} else {
 				this.$store.dispatch('cancelPollNewMessages', { requestId: this.chatIdentifier })
 			}
@@ -1195,6 +1190,7 @@ export default {
 			}
 			return '0'
 		},
+
 		/**
 		 * gets the first message's id.
 		 *
@@ -1218,11 +1214,10 @@ export default {
 			if (from.name === 'conversation' && to.name === 'conversation'
 				&& from.params.token === to.params.token
 				&& from.hash !== to.hash) {
-
 				// the hash changed, need to focus/highlight another message
 				if (to.hash && to.hash.startsWith('#message_')) {
 					const focusedId = this.getMessageIdFromHash(to.hash)
-					if (this.messagesList.find(m => m.id === focusedId)) {
+					if (this.messagesList.find((m) => m.id === focusedId)) {
 						// need some delay (next tick is too short) to be able to run
 						// after the browser's native "scroll to anchor" from
 						// the hash
@@ -1266,7 +1261,7 @@ export default {
 			setTimeout(() => {
 				this.refreshReadMarkerPosition()
 				// Regenerate relative date separators
-				Object.keys(this.dateSeparatorLabels).forEach(dateTimestamp => {
+				Object.keys(this.dateSeparatorLabels).forEach((dateTimestamp) => {
 					this.$set(this.dateSeparatorLabels, dateTimestamp, this.generateDateSeparator(dateTimestamp))
 				})
 			}, 2)

@@ -1,3 +1,5 @@
+import { subscribe, unsubscribe } from '@nextcloud/event-bus'
+import { loadState } from '@nextcloud/initial-state'
 /**
  * SPDX-FileCopyrightText: 2021 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -8,12 +10,7 @@ import { cloneDeep } from 'lodash'
 import { createPinia, setActivePinia } from 'pinia'
 import VueRouter from 'vue-router'
 import Vuex from 'vuex'
-
-import { subscribe, unsubscribe } from '@nextcloud/event-bus'
-import { loadState } from '@nextcloud/initial-state'
-
 import LeftSidebar from './LeftSidebar.vue'
-
 import router from '../../__mocks__/router.js'
 import { searchListedConversations } from '../../services/conversationsService.ts'
 import { autocompleteQuery } from '../../services/coreService.ts'
@@ -29,8 +26,21 @@ jest.mock('../../services/coreService', () => ({
 	autocompleteQuery: jest.fn(),
 }))
 
+// Test actions with 'can-create' config
+let mockCanCreateConversations = true
+jest.mock('../../services/CapabilitiesManager', () => ({
+	...jest.requireActual('../../services/CapabilitiesManager'),
+	getTalkConfig: jest.fn((...args) => {
+		if (args[0] === 'local' && args[1] === 'conversations' && args[2] === 'can-create') {
+			return mockCanCreateConversations
+		} else {
+			return jest.requireActual('../../services/CapabilitiesManager').getTalkConfig(...args)
+		}
+	}),
+}))
+
 // short-circuit debounce
-jest.mock('debounce', () => jest.fn().mockImplementation(fn => fn))
+jest.mock('debounce', () => jest.fn().mockImplementation((fn) => fn))
 
 describe('LeftSidebar.vue', () => {
 	let store
@@ -60,7 +70,7 @@ describe('LeftSidebar.vue', () => {
 			router,
 			store,
 			provide: {
-				'NcContent:setHasAppNavigation': () => {}
+				'NcContent:setHasAppNavigation': () => {},
 			},
 			stubs: {
 				// to prevent user status fetching
@@ -83,7 +93,6 @@ describe('LeftSidebar.vue', () => {
 
 		loadStateSettings = {
 			circles_enabled: true,
-			start_conversations: true,
 		}
 
 		loadState.mockImplementation((app, key) => {
@@ -111,6 +120,7 @@ describe('LeftSidebar.vue', () => {
 	})
 
 	afterEach(() => {
+		mockCanCreateConversations = true
 		jest.clearAllMocks()
 	})
 
@@ -160,15 +170,13 @@ describe('LeftSidebar.vue', () => {
 			expect(fetchConversationsAction).toHaveBeenCalledWith(expect.anything(), expect.anything())
 
 			expect(wrapper.vm.searchText).toBe('')
-			expect(wrapper.vm.initialisedConversations).toBeFalsy()
 
 			expect(conversationsReceivedEvent).not.toHaveBeenCalled()
 
 			// move on past the fetchConversation call
 			await flushPromises()
 
-			expect(wrapper.vm.initialisedConversations).toBeTruthy()
-			const normalConversationsList = conversationsList.filter(conversation => !conversation.isArchived)
+			const normalConversationsList = conversationsList.filter((conversation) => !conversation.isArchived)
 			const conversationListItems = wrapper.findAll('.vue-recycle-scroller-STUB-item')
 			expect(conversationListItems).toHaveLength(normalConversationsList.length)
 			expect(conversationListItems.at(0).text()).toStrictEqual(normalConversationsList[0].displayName)
@@ -357,19 +365,19 @@ describe('LeftSidebar.vue', () => {
 		function prepareExpectedResults(usersResults, groupsResults, circlesResults, listedResults, remainedCaption, circlesEnabled = true, startConversations = true) {
 			// Check all conversations, users, groups and circles
 			const conversationList = conversationsList
-				.filter(item => item.name.includes(SEARCH_TERM) || item.displayName.includes(SEARCH_TERM))
-				.map(item => { return item.name })
+				.filter((item) => item.name.includes(SEARCH_TERM) || item.displayName.includes(SEARCH_TERM))
+				.map((item) => { return item.name })
 			const searchedUsersResults = usersResults
-				.filter(item => item.label.includes(SEARCH_TERM) && item.id !== 'current-user' && item.source === 'users')
-				.map(item => { return item.label })
+				.filter((item) => item.label.includes(SEARCH_TERM) && item.id !== 'current-user' && item.source === 'users')
+				.map((item) => { return item.label })
 			const searchedGroupsResults = groupsResults
-				.filter(item => item.label.includes(SEARCH_TERM))
-				.map(item => { return item.label })
+				.filter((item) => item.label.includes(SEARCH_TERM))
+				.map((item) => { return item.label })
 			const searchedCirclesResults = circlesResults
-				.filter(item => item.label.includes(SEARCH_TERM))
-				.map(item => { return item.label })
+				.filter((item) => item.label.includes(SEARCH_TERM))
+				.map((item) => { return item.label })
 			const searchedFederatedUsersResults = usersResults
-				.filter(item => item.label.includes(SEARCH_TERM) && item.id === 'current-user' && item.source === 'remotes')
+				.filter((item) => item.label.includes(SEARCH_TERM) && item.id === 'current-user' && item.source === 'remotes')
 
 			const itemsListNames = []
 			if (conversationList.length > 0) {
@@ -381,7 +389,7 @@ describe('LeftSidebar.vue', () => {
 				itemsListNames.push(SEARCH_TERM)
 			}
 			if (listedResults.length > 0) {
-				itemsListNames.push('Open conversations', ...listedResults.map(item => item.name))
+				itemsListNames.push('Open conversations', ...listedResults.map((item) => item.name))
 			}
 			if (searchedUsersResults.length > 0) {
 				itemsListNames.push('Users', ...searchedUsersResults)
@@ -408,7 +416,6 @@ describe('LeftSidebar.vue', () => {
 					listedResults,
 					{
 						circles_enabled: true,
-						start_conversations: true,
 					},
 				)
 				const itemsListNames = prepareExpectedResults(usersResults, groupsResults, circlesResults, listedResults, 'Other sources')
@@ -421,13 +428,14 @@ describe('LeftSidebar.vue', () => {
 			})
 
 			test('only shows user search results when cannot create conversations', async () => {
+				mockCanCreateConversations = false
+
 				const wrapper = await testSearch(
 					SEARCH_TERM,
 					[...usersResults, ...groupsResults, ...circlesResults],
 					listedResults,
 					{
 						circles_enabled: true,
-						start_conversations: false,
 					},
 				)
 
@@ -435,11 +443,10 @@ describe('LeftSidebar.vue', () => {
 				const itemsList = wrapper.findAll('.vue-recycle-scroller-STUB-item')
 				expect(itemsList.exists()).toBeTruthy()
 				expect(itemsList).toHaveLength(itemsListNames.length)
-				expect(itemsListNames.filter(item => ['Groups', 'Teams', 'Federated users', SEARCH_TERM].includes(item)).length).toBe(0)
+				expect(itemsListNames.filter((item) => ['Groups', 'Teams', 'Federated users', SEARCH_TERM].includes(item)).length).toBe(0)
 				itemsListNames.forEach((name, index) => {
 					expect(itemsList.at(index).text()).toStrictEqual(name)
 				})
-
 			})
 
 			test('does not show circles results when circles are disabled', async () => {
@@ -449,7 +456,6 @@ describe('LeftSidebar.vue', () => {
 					listedResults,
 					{
 						circles_enabled: false,
-						start_conversations: true,
 					},
 				)
 
@@ -457,7 +463,7 @@ describe('LeftSidebar.vue', () => {
 				const itemsList = wrapper.findAll('.vue-recycle-scroller-STUB-item')
 				expect(itemsList.exists()).toBeTruthy()
 				expect(itemsList).toHaveLength(itemsListNames.length)
-				expect(itemsListNames.filter(item => ['Teams'].includes(item)).length).toBe(0)
+				expect(itemsListNames.filter((item) => ['Teams'].includes(item)).length).toBe(0)
 				itemsListNames.forEach((name, index) => {
 					expect(itemsList.at(index).text()).toStrictEqual(name)
 				})
@@ -498,7 +504,6 @@ describe('LeftSidebar.vue', () => {
 					[],
 					{
 						circles_enabled: true,
-						start_conversations: true,
 					},
 					'Users, groups and teams',
 				)
@@ -510,7 +515,6 @@ describe('LeftSidebar.vue', () => {
 					listedResults,
 					{
 						circles_enabled: true,
-						start_conversations: true,
 					},
 					'Users, groups and teams',
 				)
@@ -522,7 +526,6 @@ describe('LeftSidebar.vue', () => {
 					[],
 					{
 						circles_enabled: false,
-						start_conversations: true,
 					},
 					'Users and groups',
 				)
@@ -534,7 +537,6 @@ describe('LeftSidebar.vue', () => {
 					[],
 					{
 						circles_enabled: true,
-						start_conversations: true,
 					},
 					'Users and groups',
 				)
@@ -546,7 +548,6 @@ describe('LeftSidebar.vue', () => {
 					[],
 					{
 						circles_enabled: true,
-						start_conversations: true,
 					},
 					'Users',
 				)
@@ -558,7 +559,6 @@ describe('LeftSidebar.vue', () => {
 					[],
 					{
 						circles_enabled: true,
-						start_conversations: true,
 					},
 					'Groups',
 				)
@@ -570,7 +570,6 @@ describe('LeftSidebar.vue', () => {
 					[],
 					{
 						circles_enabled: true,
-						start_conversations: true,
 					},
 					'Groups and teams',
 				)
@@ -582,7 +581,6 @@ describe('LeftSidebar.vue', () => {
 					[],
 					{
 						circles_enabled: true,
-						start_conversations: true,
 					},
 					'Users and teams',
 				)
@@ -596,15 +594,12 @@ describe('LeftSidebar.vue', () => {
 			fetchConversationsAction.mockResolvedValueOnce()
 		})
 		test('shows new conversation button if user can start conversations', () => {
-			loadStateSettings.start_conversations = true
-
 			const wrapper = mountComponent()
 			const newConversationbutton = findNcActionButton(wrapper, 'Create a new conversation')
 			expect(newConversationbutton.exists()).toBeTruthy()
-
 		})
 		test('does not show new conversation button if user cannot start conversations', () => {
-			loadStateSettings.start_conversations = false
+			mockCanCreateConversations = false
 
 			const wrapper = mountComponent()
 			const newConversationbutton = findNcActionButton(wrapper, 'Create a new conversation')

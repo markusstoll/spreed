@@ -3,17 +3,17 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { getCapabilities as _getCapabilities } from '@nextcloud/capabilities'
+import type { acceptShareResponse, Capabilities, Conversation, JoinRoomFullResponse } from '../types/index.ts'
 
-import { getRemoteCapabilities } from './federationService.ts'
+import { getCapabilities as _getCapabilities } from '@nextcloud/capabilities'
 import BrowserStorage from '../services/BrowserStorage.js'
 import { useTalkHashStore } from '../stores/talkHash.js'
-import type { acceptShareResponse, Capabilities, Conversation, JoinRoomFullResponse } from '../types/index.ts'
+import { getRemoteCapabilities } from './federationService.ts'
 
 type Config = Capabilities['spreed']['config']
 type RemoteCapability = Capabilities & { hash?: string }
 type RemoteCapabilities = Record<string, RemoteCapability>
-type TokenMap = Record<string, string|undefined|null>
+type TokenMap = Record<string, string | undefined | null>
 
 let remoteTokenMap: TokenMap = generateTokenMap()
 
@@ -30,7 +30,7 @@ function generateTokenMap() {
 		return {}
 	}
 	const cachedConversations = JSON.parse(storageValue) as Conversation[]
-	cachedConversations.forEach(conversation => {
+	cachedConversations.forEach((conversation) => {
 		tokenMap[conversation.token] = conversation.remoteServer || null
 	})
 
@@ -70,18 +70,17 @@ export function hasTalkFeature(token: string = 'local', feature: string): boolea
  * @param key1 top-level key (e.g. 'attachments')
  * @param key2 second-level key (e.g. 'allowed')
  */
-export function getTalkConfig(token: string = 'local', key1: keyof Config, key2: string) {
+export function getTalkConfig<
+	T extends keyof Config,
+	K extends keyof Config[T],
+>(token: string = 'local', key1: T, key2: K): Config[T][K] | undefined {
 	const remoteCapabilities = getRemoteCapability(token)
-	const locals = localCapabilities?.spreed?.config?.[key1]
-	if (localCapabilities?.spreed?.['config-local']?.[key1]?.includes(key2)) {
-		// @ts-expect-error Vue: Element implicitly has an any type because expression of type string can't be used to index type
+	if (localCapabilities?.spreed?.['config-local']?.[key1]?.includes(String(key2))) {
 		return localCapabilities?.spreed?.config?.[key1]?.[key2]
 	} else if (token === 'local' || !remoteCapabilities) {
-		// @ts-expect-error Vue: Element implicitly has an any type because expression of type string can't be used to index type
 		return localCapabilities?.spreed?.config?.[key1]?.[key2]
 	} else {
 		// TODO discuss handling remote config (respect remote only / both / minimal)
-		// @ts-expect-error Vue: Element implicitly has an any type because expression of type string can't be used to index type
 		return remoteCapabilities?.spreed?.config?.[key1]?.[key2]
 	}
 }
@@ -199,7 +198,7 @@ function checkRemoteCapabilitiesHasChanged(newObject: Capabilities['spreed'], ol
 			}
 		}
 
-		const features = object.features.filter(feature => !object['features-local'].includes(feature)).sort()
+		const features = object.features.filter((feature) => !object['features-local'].includes(feature)).sort()
 
 		return { config, features }
 	}

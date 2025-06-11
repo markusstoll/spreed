@@ -3,15 +3,16 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import axios from '@nextcloud/axios'
-import { generateOcsUrl } from '@nextcloud/router'
-
 import type {
+	getMutualEventsResponse,
 	OutOfOfficeResponse,
-	UpcomingEventsResponse,
 	scheduleMeetingParams,
 	scheduleMeetingResponse,
+	UpcomingEventsResponse,
 } from '../types/index.ts'
+
+import axios from '@nextcloud/axios'
+import { generateOcsUrl } from '@nextcloud/router'
 
 /**
  * Get upcoming events for a given conversation within the next 31 days.
@@ -31,6 +32,15 @@ const getUpcomingEvents = async (location: string): UpcomingEventsResponse => {
  */
 const getUserAbsence = async (userId: string): OutOfOfficeResponse => {
 	return axios.get(generateOcsUrl('/apps/dav/api/v1/outOfOffice/{userId}/now', { userId }))
+}
+
+/**
+ * Get information about mutual events for a given 1-1 conversation.
+ *
+ * @param token The conversation token
+ */
+const getMutualEvents = async function(token: string): getMutualEventsResponse {
+	return axios.get(generateOcsUrl('apps/spreed/api/v4/room/{token}/mutual-events', { token }))
 }
 
 /**
@@ -58,6 +68,7 @@ const scheduleMeeting = async function(token: string, { calendarUri, start, end,
 }
 
 export {
+	getMutualEvents,
 	getUpcomingEvents,
 	getUserAbsence,
 	scheduleMeeting,

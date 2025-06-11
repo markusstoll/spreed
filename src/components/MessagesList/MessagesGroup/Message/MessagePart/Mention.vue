@@ -16,9 +16,8 @@
 </template>
 
 <script>
-import NcUserBubble from '@nextcloud/vue/components/NcUserBubble'
 import { useIsDarkTheme } from '@nextcloud/vue/composables/useIsDarkTheme'
-
+import NcUserBubble from '@nextcloud/vue/components/NcUserBubble'
 import { MENTION } from '../../../../../constants.ts'
 import { getConversationAvatarOcsUrl, getUserProxyAvatarOcsUrl } from '../../../../../services/avatarService.ts'
 
@@ -34,18 +33,22 @@ export default {
 			type: String,
 			required: true,
 		},
+
 		type: {
 			type: String,
 			required: true,
 		},
+
 		id: {
 			type: String,
 			required: true,
 		},
+
 		name: {
 			type: String,
 			required: true,
 		},
+
 		server: {
 			type: String,
 			default: '',
@@ -70,18 +73,23 @@ export default {
 		isMentionToAll() {
 			return this.type === MENTION.TYPE.CALL
 		},
+
 		isGroupMention() {
 			return [MENTION.TYPE.USERGROUP, MENTION.TYPE.GROUP].includes(this.type)
 		},
+
 		isTeamMention() {
 			return [MENTION.TYPE.CIRCLE, MENTION.TYPE.TEAM].includes(this.type)
 		},
+
 		isMentionToGuest() {
 			return this.type === MENTION.TYPE.GUEST || this.type === MENTION.TYPE.EMAIL
 		},
+
 		isRemoteUser() {
 			return [MENTION.TYPE.USER, MENTION.TYPE.FEDERATED_USER].includes(this.type) && this.server !== ''
 		},
+
 		isCurrentGuest() {
 			// On mention bubbles the id is actually "guest/ACTOR_ID" for guests
 			// This is to make sure guests can never collide with users,
@@ -93,6 +101,7 @@ export default {
 				&& (this.id === ('guest/' + this.$store.getters.getActorId())
 					|| this.id === this.$store.getters.getActorId())
 		},
+
 		isCurrentUser() {
 			if (this.isRemoteUser) {
 				// For now, we don't highlight remote users even if they are the one
@@ -102,12 +111,15 @@ export default {
 			return this.$store.getters.isActorUser()
 				&& this.id === this.$store.getters.getUserId()
 		},
+
 		isCurrentUserGroup() {
 			return this.isGroupMention && this.$store.getters.isActorMemberOfGroup(this.id)
 		},
+
 		isCurrentUserTeam() {
 			return this.isTeamMention && this.$store.getters.isActorMemberOfTeam(this.id)
 		},
+
 		primary() {
 			return this.isMentionToAll
 				|| this.isCurrentUser
@@ -115,6 +127,7 @@ export default {
 				|| this.isCurrentUserTeam
 				|| (this.isMentionToGuest && this.isCurrentGuest)
 		},
+
 		avatarUrl() {
 			if (this.isRemoteUser) {
 				return this.token
@@ -135,8 +148,8 @@ export default {
 	},
 
 	mounted() {
-		this.size = parseInt(window.getComputedStyle(this.$refs.mention).fontSize, 10) * 4 / 3 ?? 20
-	}
+		this.size = parseInt(window.getComputedStyle(this.$refs.mention).fontSize ?? 15, 10) * 4 / 3
+	},
 }
 </script>
 

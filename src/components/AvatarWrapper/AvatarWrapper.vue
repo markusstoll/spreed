@@ -10,7 +10,7 @@
 			{{ firstLetterOfGuestName }}
 		</div>
 		<div v-else-if="isBot" class="avatar bot">
-			{{ '>_' }}
+			>_
 		</div>
 		<img v-else-if="isFederatedUser && token"
 			:key="avatarUrl"
@@ -46,16 +46,12 @@
 </template>
 
 <script>
-import { ref } from 'vue'
-
-import WebIcon from 'vue-material-design-icons/Web.vue'
-
 import { t } from '@nextcloud/l10n'
-
+import { useIsDarkTheme } from '@nextcloud/vue/composables/useIsDarkTheme'
+import { ref } from 'vue'
 import NcAvatar from '@nextcloud/vue/components/NcAvatar'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
-import { useIsDarkTheme } from '@nextcloud/vue/composables/useIsDarkTheme'
-
+import WebIcon from 'vue-material-design-icons/Web.vue'
 import { ATTENDEE, AVATAR } from '../../constants.ts'
 import { getUserProxyAvatarOcsUrl } from '../../services/avatarService.ts'
 
@@ -74,58 +70,72 @@ export default {
 			type: String,
 			default: null,
 		},
+
 		name: {
 			type: String,
 			required: true,
 		},
+
 		id: {
 			type: String,
 			default: null,
 		},
+
 		source: {
 			type: String,
 			default: null,
 		},
+
 		size: {
 			type: Number,
 			default: AVATAR.SIZE.DEFAULT,
 		},
+
 		condensed: {
 			type: Boolean,
 			default: false,
 		},
+
 		condensedOverlap: {
 			type: Number,
 			default: 2,
 		},
+
 		offline: {
 			type: Boolean,
 			default: false,
 		},
+
 		highlighted: {
 			type: Boolean,
 			default: false,
 		},
+
 		disableTooltip: {
 			type: Boolean,
 			default: false,
 		},
+
 		disableMenu: {
 			type: Boolean,
 			default: false,
 		},
+
 		showUserStatus: {
 			type: Boolean,
 			default: false,
 		},
+
 		showUserStatusCompact: {
 			type: Boolean,
 			default: false,
 		},
+
 		preloadedUserStatus: {
 			type: Object,
 			default: undefined,
 		},
+
 		menuContainer: {
 			type: String,
 			default: undefined,
@@ -155,28 +165,29 @@ export default {
 				return ''
 			}
 			switch (this.source) {
-			case ATTENDEE.ACTOR_TYPE.USERS:
-			case ATTENDEE.ACTOR_TYPE.BRIDGED:
-				return !this.failed ? '' : 'icon-user'
-			case ATTENDEE.ACTOR_TYPE.FEDERATED_USERS:
-				return (this.token && !this.failed) ? '' : 'icon-user'
-			case ATTENDEE.ACTOR_TYPE.EMAILS:
-				return this.token === 'new' ? 'icon-mail' : (this.hasCustomName ? '' : 'icon-user')
-			case ATTENDEE.ACTOR_TYPE.GUESTS:
-				return this.hasCustomName ? '' : 'icon-user'
-			case ATTENDEE.ACTOR_TYPE.DELETED_USERS:
-				return 'icon-user'
-			case ATTENDEE.ACTOR_TYPE.PHONES:
-				return 'icon-phone'
-			case ATTENDEE.ACTOR_TYPE.BOTS:
-				return [ATTENDEE.CHANGELOG_BOT_ID, ATTENDEE.SAMPLE_BOT_ID].includes(this.id) ? 'icon-changelog' : ''
-			case ATTENDEE.ACTOR_TYPE.CIRCLES:
-				return 'icon-team'
-			case ATTENDEE.ACTOR_TYPE.GROUPS:
-			default:
-				return 'icon-contacts'
+				case ATTENDEE.ACTOR_TYPE.USERS:
+				case ATTENDEE.ACTOR_TYPE.BRIDGED:
+					return !this.failed ? '' : 'icon-user'
+				case ATTENDEE.ACTOR_TYPE.FEDERATED_USERS:
+					return (this.token && !this.failed) ? '' : 'icon-user'
+				case ATTENDEE.ACTOR_TYPE.EMAILS:
+					return this.token === 'new' ? 'icon-mail' : (this.hasCustomName ? '' : 'icon-user')
+				case ATTENDEE.ACTOR_TYPE.GUESTS:
+					return this.hasCustomName ? '' : 'icon-user'
+				case ATTENDEE.ACTOR_TYPE.DELETED_USERS:
+					return 'icon-user'
+				case ATTENDEE.ACTOR_TYPE.PHONES:
+					return 'icon-phone'
+				case ATTENDEE.ACTOR_TYPE.BOTS:
+					return [ATTENDEE.CHANGELOG_BOT_ID, ATTENDEE.SAMPLE_BOT_ID].includes(this.id) ? 'icon-changelog' : ''
+				case ATTENDEE.ACTOR_TYPE.CIRCLES:
+					return 'icon-team'
+				case ATTENDEE.ACTOR_TYPE.GROUPS:
+				default:
+					return 'icon-contacts'
 			}
 		},
+
 		avatarClass() {
 			return {
 				'avatar-wrapper--dark': this.isDarkTheme,
@@ -185,27 +196,34 @@ export default {
 				'avatar-wrapper--highlighted': this.highlighted,
 			}
 		},
+
 		avatarStyle() {
 			return {
 				'--avatar-size': this.size + 'px',
 				'--condensed-overlap': this.condensedOverlap,
 			}
 		},
+
 		isFederatedUser() {
 			return this.source === ATTENDEE.ACTOR_TYPE.FEDERATED_USERS
 		},
+
 		isBot() {
 			return this.source === ATTENDEE.ACTOR_TYPE.BOTS && this.id !== ATTENDEE.CHANGELOG_BOT_ID && this.id !== ATTENDEE.SAMPLE_BOT_ID
 		},
+
 		isGuestUser() {
 			return [ATTENDEE.ACTOR_TYPE.GUESTS, ATTENDEE.ACTOR_TYPE.EMAILS].includes(this.source)
 		},
+
 		hasCustomName() {
 			return this.name?.trim() && this.name !== t('spreed', 'Guest')
 		},
+
 		firstLetterOfGuestName() {
 			return this.name?.trim()?.toUpperCase()?.charAt(0) ?? '?'
 		},
+
 		avatarUrl() {
 			return getUserProxyAvatarOcsUrl(this.token, this.id, this.isDarkTheme, this.size > AVATAR.SIZE.MEDIUM ? 512 : 64)
 		},
@@ -214,7 +232,7 @@ export default {
 	watch: {
 		avatarUrl() {
 			this.failed = false
-		}
+		},
 	},
 
 	methods: {

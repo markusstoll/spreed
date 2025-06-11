@@ -359,7 +359,7 @@ class Manager {
 	 * @param bool $includeLastMessage
 	 * @return Room[]
 	 */
-	public function getRoomsForActor(string $actorType, string $actorId, array $sessionIds = [], bool $includeLastMessage = false): array {
+	public function getRoomsForActor(string $actorType, string $actorId, array $sessionIds = [], bool $includeLastMessage = false, array $tokens = []): array {
 		$query = $this->db->getQueryBuilder();
 		$helper = new SelectHelper();
 		$helper->selectRoomsTable($query);
@@ -371,6 +371,10 @@ class Manager {
 				$query->expr()->eq('a.room_id', 'r.id')
 			))
 			->where($query->expr()->isNotNull('a.id'));
+
+		if (!empty($tokens)) {
+			$query->andWhere($query->expr()->in('r.token', $query->createNamedParameter($tokens, IQueryBuilder::PARAM_STR_ARRAY)));
+		}
 
 		if (!empty($sessionIds)) {
 			$helper->selectSessionsTable($query);
@@ -943,6 +947,39 @@ class Manager {
 	}
 
 	/**
+	 * @return list<Room>
+	 */
+	public function getExpiringRoomsForObjectType(string $objectType, int $minimumLastActivity): array {
+		$query = $this->db->getQueryBuilder();
+		$helper = new SelectHelper();
+		$helper->selectRoomsTable($query, '');
+		$query->from('talk_rooms')
+			->where($query->expr()->eq('object_type', $query->createNamedParameter($objectType)))
+			->andWhere($query->expr()->lte('last_activity', $query->createNamedParameter(new \DateTimeImmutable('@' . $minimumLastActivity), IQueryBuilder::PARAM_DATETIME_IMMUTABLE)));
+
+		if ($objectType === Room::OBJECT_TYPE_EVENT) {
+			// Ignore events that don't have a start and end date,
+			// as they are most likely from before the Talk 21.1 upgrade
+			$query->andWhere($query->expr()->like('object_id', $query->createNamedParameter('%' . $this->db->escapeLikeParameter('#') . '%')));
+		}
+
+		$result = $query->executeQuery();
+
+		$rooms = [];
+		while ($row = $result->fetch()) {
+			if ($row['token'] === null) {
+				// FIXME Temporary solution for the Talk6 release
+				continue;
+			}
+
+			$rooms[] = $this->createRoomObject($row);
+		}
+		$result->closeCursor();
+
+		return $rooms;
+	}
+
+	/**
 	 * @param string[] $tokens
 	 * @return array<string, Room>
 	 */
@@ -1074,7 +1111,7 @@ class Manager {
 		$result->closeCursor();
 
 		if ($row === false) {
-			$room = $this->createRoom(Room::TYPE_CHANGELOG, $userId);
+			$room = $this->createRoom(Room::TYPE_CHANGELOG, $userId, sipEnabled: Webinary::SIP_DISABLED);
 			Server::get(RoomService::class)->setReadOnly($room, Room::READ_ONLY);
 
 			$user = $this->userManager->get($userId);
@@ -1163,6 +1200,15 @@ class Manager {
 			if ($lobbyTimer !== null) {
 				$insert->setValue('lobby_timer', $insert->createNamedParameter($lobbyTimer, IQueryBuilder::PARAM_DATETIME_MUTABLE));
 				$row['lobby_timer'] = $lobbyTimer->format(\DATE_ATOM);
+			}
+		}
+		if ($sipEnabled === null) {
+			$default = $this->config->getAppValue('spreed', 'sip_dialin_default', 'none');
+			if ($default !== 'none') {
+				$default = (int)$default;
+				if (in_array($default, [Webinary::SIP_DISABLED, Webinary::SIP_ENABLED, Webinary::SIP_ENABLED_NO_PIN], true)) {
+					$sipEnabled = $default;
+				}
 			}
 		}
 		if ($sipEnabled !== null) {

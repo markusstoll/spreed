@@ -33,7 +33,9 @@ use OCA\Talk\Service\SIPDialOutService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\BruteForceProtection;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
+use OCP\AppFramework\Http\Attribute\RequestHeader;
 use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\Response;
@@ -77,6 +79,7 @@ class CallController extends AEnvironmentAwareOCSController {
 	#[RequireModeratorOrNoLobby]
 	#[RequireParticipant]
 	#[RequireReadWriteConversation]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
 	public function getPeersForCall(): DataResponse {
 		if ($this->room->isFederatedConversation()) {
 			/** @var \OCA\Talk\Federation\Proxy\TalkV1\Controller\CallController $proxy */
@@ -129,7 +132,7 @@ class CallController extends AEnvironmentAwareOCSController {
 	 */
 	#[PublicPage]
 	#[RequireModeratorParticipant]
-	#[Http\Attribute\NoCSRFRequired]
+	#[NoCSRFRequired]
 	public function downloadParticipantsForCall(string $format = 'csv'): DataDownloadResponse|Response {
 		$callStart = $this->room->getActiveSince()?->getTimestamp() ?? 0;
 		if ($callStart === 0) {
@@ -210,6 +213,7 @@ class CallController extends AEnvironmentAwareOCSController {
 	 *                               (Only needed when the `config => call => recording-consent` capability is set to {@see RecordingService::CONSENT_REQUIRED_YES}
 	 *                               or the capability is {@see RecordingService::CONSENT_REQUIRED_OPTIONAL}
 	 *                               and the conversation `recordingConsent` value is {@see RecordingService::CONSENT_REQUIRED_YES} )
+	 * @param list<string> $silentFor Send no call notification for previous participants
 	 * @return DataResponse<Http::STATUS_OK|Http::STATUS_NOT_FOUND, null, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{error: string}, array{}>
 	 *
 	 * 200: Call joined successfully
@@ -222,7 +226,8 @@ class CallController extends AEnvironmentAwareOCSController {
 	#[RequireModeratorOrNoLobby]
 	#[RequireParticipant]
 	#[RequireReadWriteConversation]
-	public function joinCall(?int $flags = null, bool $silent = false, bool $recordingConsent = false): DataResponse {
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
+	public function joinCall(?int $flags = null, bool $silent = false, bool $recordingConsent = false, array $silentFor = []): DataResponse {
 		try {
 			$this->validateRecordingConsent($recordingConsent);
 		} catch (\InvalidArgumentException) {
@@ -256,7 +261,7 @@ class CallController extends AEnvironmentAwareOCSController {
 
 		try {
 			$this->participantService->changeInCall($this->room, $this->participant, $flags, silent: $silent, lastJoinedCall: $lastJoinedCall->getTimestamp());
-			$this->roomService->setActiveSince($this->room, $this->participant, $lastJoinedCall, $flags, silent: $silent);
+			$this->roomService->setActiveSince($this->room, $this->participant, $lastJoinedCall, $flags, silent: $silent, silentFor: $silentFor);
 		} catch (\InvalidArgumentException $e) {
 			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -343,6 +348,7 @@ class CallController extends AEnvironmentAwareOCSController {
 	#[RequireCallEnabled]
 	#[RequireParticipant]
 	#[RequirePermission(permission: RequirePermission::START_CALL)]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
 	public function ringAttendee(int $attendeeId): DataResponse {
 		if ($this->room->isFederatedConversation()) {
 			/** @var \OCA\Talk\Federation\Proxy\TalkV1\Controller\CallController $proxy */
@@ -423,6 +429,7 @@ class CallController extends AEnvironmentAwareOCSController {
 	#[FederationSupported]
 	#[PublicPage]
 	#[RequireParticipant]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
 	public function updateCallFlags(int $flags): DataResponse {
 		$session = $this->participant->getSession();
 		if (!$session instanceof Session) {
@@ -495,6 +502,7 @@ class CallController extends AEnvironmentAwareOCSController {
 	#[FederationSupported]
 	#[PublicPage]
 	#[RequireParticipant]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
 	public function leaveCall(bool $all = false): DataResponse {
 		$session = $this->participant->getSession();
 		if (!$session instanceof Session) {

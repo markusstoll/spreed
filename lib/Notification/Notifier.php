@@ -626,7 +626,7 @@ class Notifier implements INotifier {
 		}
 
 		$parsedMessage = str_replace($placeholders, $replacements, $message->getMessage());
-		if (!$this->notificationManager->isPreparingPushNotification()) {
+		if (!$this->notificationManager->isPreparingPushNotification() && !$participant->getAttendee()->isSensitive()) {
 			$notification->setParsedMessage($parsedMessage);
 			$notification->setRichMessage($message->getMessage(), $message->getMessageParameters());
 
@@ -639,7 +639,44 @@ class Notifier implements INotifier {
 			'call' => $richSubjectCall,
 		];
 
-		if ($this->notificationManager->isPreparingPushNotification()) {
+		if ($participant->getAttendee()->isSensitive()) {
+			// Prevent message preview and conversation name in sensitive conversations
+
+			if ($this->notificationManager->isPreparingPushNotification()) {
+				$translatedPrivateConversation = $l->t('Private conversation');
+
+				if ($notification->getSubject() === 'reaction') {
+					// TRANSLATORS Someone reacted in a private conversation
+					$subject = $translatedPrivateConversation . "\n" . $l->t('Someone reacted');
+				} elseif ($notification->getSubject() === 'chat') {
+					// TRANSLATORS You received a new message in a private conversation
+					$subject = $translatedPrivateConversation . "\n" . $l->t('New message');
+				} elseif ($notification->getSubject() === 'reminder') {
+					// TRANSLATORS Reminder for a message in a private conversation
+					$subject = $translatedPrivateConversation . "\n" . $l->t('Reminder');
+				} elseif (str_starts_with($notification->getSubject(), 'mention_')) {
+					// TRANSLATORS Someone mentioned you in a private conversation
+					$subject = $translatedPrivateConversation . "\n" . $l->t('Someone mentioned you');
+				} else {
+					// TRANSLATORS There's a notification in a private conversation
+					$subject = $translatedPrivateConversation . "\n" . $l->t('Notification');
+				}
+			} else {
+				if ($notification->getSubject() === 'reaction') {
+					$subject = $l->t('Someone reacted in a private conversation');
+				} elseif ($notification->getSubject() === 'chat') {
+					$subject = $l->t('You received a message in a private conversation');
+				} elseif ($notification->getSubject() === 'reminder') {
+					$subject = $l->t('Reminder in a private conversation');
+				} elseif (str_starts_with($notification->getSubject(), 'mention_')) {
+					$subject = $l->t('Someone mentioned you in a private conversation');
+				} else {
+					$subject = $l->t('Notification in a private conversation');
+				}
+			}
+
+			$richSubjectParameters = [];
+		} elseif ($this->notificationManager->isPreparingPushNotification()) {
 			$shortenMessage = $this->shortenJsonEncodedMultibyteSave($parsedMessage, 100);
 			if ($shortenMessage !== $parsedMessage) {
 				$shortenMessage .= '…';
@@ -887,7 +924,7 @@ class Notifier implements INotifier {
 			$notification = $this->addActionButton($notification, 'chat_view', $l->t('View chat'), false);
 		}
 
-		if ($richSubjectParameters['user'] === null) {
+		if (array_key_exists('user', $richSubjectParameters) && $richSubjectParameters['user'] === null) {
 			unset($richSubjectParameters['user']);
 		}
 
@@ -1051,6 +1088,32 @@ class Notifier implements INotifier {
 			} else {
 				throw new AlreadyProcessedException();
 			}
+		} elseif ($room->getObjectId() === Room::OBJECT_ID_PHONE_INCOMING
+			&& in_array($room->getObjectType(), [Room::OBJECT_TYPE_PHONE_PERSIST, Room::OBJECT_TYPE_PHONE_TEMPORARY, Room::OBJECT_TYPE_PHONE_LEGACY], true)) {
+			if ($this->notificationManager->isPreparingPushNotification()
+				|| (!$room->isFederatedConversation() && $this->participantService->hasActiveSessionsInCall($room))
+				|| ($room->isFederatedConversation() && $room->getActiveSince())
+			) {
+				$notification = $this->addActionButton($notification, 'call_view', $l->t('Accept call'), true, true);
+				$subject = $l->t('Incoming phone call from {call}');
+			} else {
+				$notification = $this->addActionButton($notification, 'chat_view', $l->t('View chat'), false);
+				$subject = $l->t('You missed a phone call from {call}');
+			}
+
+			$notification
+				->setParsedSubject(str_replace('{call}', $roomName, $subject))
+				->setRichSubject(
+					$subject, [
+						'call' => [
+							'type' => 'call',
+							'id' => (string)$room->getId(),
+							'name' => $roomName,
+							'call-type' => $this->getRoomType($room),
+							'icon-url' => $this->avatarService->getAvatarUrl($room),
+						],
+					]
+				);
 		} elseif (\in_array($room->getType(), [Room::TYPE_GROUP, Room::TYPE_PUBLIC], true)) {
 			if ($this->notificationManager->isPreparingPushNotification()
 				|| (!$room->isFederatedConversation() && $this->participantService->hasActiveSessionsInCall($room))

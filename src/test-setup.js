@@ -3,11 +3,10 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-// eslint-disable-next-line
-import 'regenerator-runtime/runtime'
 import Vue from 'vue'
-
 import { mockedCapabilities } from './__mocks__/capabilities.ts'
+
+import 'regenerator-runtime/runtime'
 
 jest.mock('extendable-media-recorder', () => ({
 	MediaRecorder: jest.fn(),
@@ -31,6 +30,8 @@ jest.mock('@nextcloud/upload', () => ({
 jest.mock('@nextcloud/capabilities', () => ({
 	getCapabilities: jest.fn(() => mockedCapabilities),
 }))
+
+HTMLAudioElement.prototype.setSinkId = jest.fn()
 
 window.IntersectionObserver = jest.fn(() => ({
 	observe: jest.fn(),
@@ -124,3 +125,16 @@ window.URL.revokeObjectURL = jest.fn()
 
 Vue.prototype.OC = OC
 Vue.prototype.OCA = OCA
+
+// Make Jest fail on errors or warnings (like a11y warning from nextcloud/vue library)
+const originalWarn = global.console.warn
+console.warn = function(message) {
+	originalWarn.apply(console, arguments)
+	throw (message instanceof Error ? message : new Error(message))
+}
+
+const originalError = global.console.error
+console.error = function(message) {
+	originalError.apply(console, arguments)
+	throw (message instanceof Error ? message : new Error(message))
+}

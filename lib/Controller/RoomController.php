@@ -61,19 +61,23 @@ use OCA\Talk\Service\ChecksumVerificationService;
 use OCA\Talk\Service\InvitationService;
 use OCA\Talk\Service\NoteToSelfService;
 use OCA\Talk\Service\ParticipantService;
+use OCA\Talk\Service\PhoneService;
 use OCA\Talk\Service\RecordingService;
 use OCA\Talk\Service\RoomFormatter;
 use OCA\Talk\Service\RoomService;
 use OCA\Talk\Service\SessionService;
+use OCA\Talk\Settings\UserPreference;
 use OCA\Talk\Share\Helper\Preloader;
 use OCA\Talk\TalkSession;
 use OCA\Talk\Webinary;
 use OCP\App\IAppManager;
+use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\BruteForceProtection;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\OpenAPI;
 use OCP\AppFramework\Http\Attribute\PublicPage;
+use OCP\AppFramework\Http\Attribute\RequestHeader;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Services\IAppConfig;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -136,6 +140,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 		protected Config $talkConfig,
 		protected ICloudIdManager $cloudIdManager,
 		protected IPhoneNumberUtil $phoneNumberUtil,
+		protected PhoneService $phoneService,
 		protected IThrottler $throttler,
 		protected LoggerInterface $logger,
 		protected Authenticator $federationAuthenticator,
@@ -186,6 +191,13 @@ class RoomController extends AEnvironmentAwareOCSController {
 			$this->config->getAppValue('spreed', 'federation_only_trusted_servers'),
 			$this->config->getAppValue('spreed', 'federation_allowed_groups', '[]'),
 		];
+
+		if ($this->userId !== null) {
+			$values[] = $this->appConfig->getAppValueInt('experiments_users');
+			$values[] = $this->config->getUserValue($this->userId, 'spreed', UserPreference::ATTACHMENT_FOLDER);
+		} else {
+			$values[] = $this->appConfig->getAppValueInt('experiments_guests');
+		}
 
 		return [
 			'X-Nextcloud-Talk-Hash' => sha1(implode('#', $values)),
@@ -381,6 +393,9 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[BruteForceProtection(action: 'talkSipBridgeSecret')]
 	#[OpenAPI]
 	#[OpenAPI(scope: 'backend-sipbridge')]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
+	#[RequestHeader(name: 'talk-sipbridge-random', description: 'Random seed used to generate the request checksum', indirect: true)]
+	#[RequestHeader(name: 'talk-sipbridge-checksum', description: 'Checksum over the request body to verify authenticity from the Sipbridge', indirect: true)]
 	public function getSingleRoom(string $token): DataResponse {
 		try {
 			$isSIPBridgeRequest = $this->validateSIPBridgeRequest($token);
@@ -401,7 +416,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 			$action = 'talkRoomToken';
 			$participant = null;
 
-			$isTalkFederation = $this->request->getHeader('X-Nextcloud-Federation');
+			$isTalkFederation = $this->request->getHeader('x-nextcloud-federation');
 
 			if (!$isTalkFederation) {
 				$sessionId = $this->session->getSessionForRoom($token);
@@ -499,8 +514,8 @@ class RoomController extends AEnvironmentAwareOCSController {
 	 * @throws UnauthorizedException when the request tried to sign as SIP bridge but is not valid
 	 */
 	private function validateSIPBridgeRequest(string $token): bool {
-		$random = $this->request->getHeader('TALK_SIPBRIDGE_RANDOM');
-		$checksum = $this->request->getHeader('TALK_SIPBRIDGE_CHECKSUM');
+		$random = $this->request->getHeader('talk-sipbridge-random');
+		$checksum = $this->request->getHeader('talk-sipbridge-checksum');
 		$secret = $this->talkConfig->getSIPSharedSecret();
 		return $this->checksumVerificationService->validateRequest($random, $checksum, $secret, $token);
 	}
@@ -620,7 +635,14 @@ class RoomController extends AEnvironmentAwareOCSController {
 		if ($objectType === Room::OBJECT_TYPE_EXTENDED_CONVERSATION && $objectId !== '') {
 			try {
 				$oldRoom = $this->manager->getRoomForUserByToken($objectId, $this->userId);
-			} catch (RoomNotFoundException) {
+				// Don't allow to extend unjoined public conversations
+				$this->participantService->getParticipant($oldRoom, $this->userId, false);
+			} catch (RoomNotFoundException|ParticipantNotFoundException) {
+				return new DataResponse(['error' => CreationException::REASON_OBJECT], Http::STATUS_BAD_REQUEST);
+			}
+
+			if ($oldRoom->getType() !== Room::TYPE_ONE_TO_ONE) {
+				// If we ever allow more types, only moderators should be able to perform the action
 				return new DataResponse(['error' => CreationException::REASON_OBJECT], Http::STATUS_BAD_REQUEST);
 			}
 		}
@@ -673,6 +695,14 @@ class RoomController extends AEnvironmentAwareOCSController {
 
 		if (!empty($invitationList->getEmails())) {
 			$roomType = Room::TYPE_PUBLIC;
+		}
+
+		if (in_array($objectType, [
+			Room::OBJECT_TYPE_PHONE_PERSIST,
+			Room::OBJECT_TYPE_PHONE_TEMPORARY,
+			Room::OBJECT_TYPE_PHONE_LEGACY,
+		], true)) {
+			$objectId = Room::OBJECT_ID_PHONE_OUTGOING;
 		}
 
 		try {
@@ -834,6 +864,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	 * 200: Call notification level updated successfully
 	 * 400: Updating call notification level is not possible
 	 */
+	#[FederationSupported]
 	#[NoAdminRequired]
 	#[RequireLoggedInParticipant]
 	public function setNotificationCalls(int $level): DataResponse {
@@ -917,6 +948,30 @@ class RoomController extends AEnvironmentAwareOCSController {
 	}
 
 	/**
+	 * Unbind a room from its object to prevent automatic retention
+	 *
+	 * Required capability: `unbind-conversation`
+	 *
+	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{error: 'object-type'}, array{}>
+	 *
+	 * 200: Room successfully unbound
+	 * 400: Unbinding room is not possible
+	 */
+	#[PublicPage]
+	#[RequireModeratorParticipant]
+	public function unbindRoomFromObject(): DataResponse {
+		if ($this->room->getObjectType() === Room::OBJECT_TYPE_EVENT || $this->room->getObjectType() === Room::OBJECT_TYPE_INSTANT_MEETING) {
+			$this->roomService->resetObject($this->room);
+		} elseif ($this->room->getObjectType() === Room::OBJECT_TYPE_PHONE_TEMPORARY) {
+			$this->roomService->setObject($this->room, Room::OBJECT_TYPE_PHONE_PERSIST, $this->room->getObjectId());
+		} else {
+			return new DataResponse(['error' => 'object-type'], Http::STATUS_BAD_REQUEST);
+		}
+
+		return new DataResponse($this->formatRoom($this->room, $this->participant));
+	}
+
+	/**
 	 *
 	 * Get a list of participants for a room
 	 *
@@ -930,6 +985,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[PublicPage]
 	#[RequireModeratorOrNoLobby]
 	#[RequireParticipant]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
 	public function getParticipants(bool $includeStatus = false): DataResponse {
 		if ($this->room->isFederatedConversation()) {
 			/** @var \OCA\Talk\Federation\Proxy\TalkV1\Controller\RoomController $proxy */
@@ -1404,6 +1460,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[FederationSupported]
 	#[NoAdminRequired]
 	#[RequireLoggedInParticipant]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
 	public function removeSelfFromRoom(): DataResponse {
 		return $this->removeSelfFromRoomLogic($this->room, $this->participant);
 	}
@@ -1650,7 +1707,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	/**
 	 * Archive a conversation
 	 *
-	 *  Required capability: `archived-conversations-v2`
+	 * Required capability: `archived-conversations-v2`
 	 *
 	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>
 	 *
@@ -1712,6 +1769,40 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[RequireLoggedInParticipant]
 	public function markConversationAsUnimportant(): DataResponse {
 		$this->participantService->markConversationAsUnimportant($this->participant);
+		return new DataResponse($this->formatRoom($this->room, $this->participant));
+	}
+
+	/**
+	 * Mark a conversation as sensitive (no last message is visible / no push preview is shown)
+	 *
+	 * Required capability: `sensitive-conversations`
+	 *
+	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>
+	 *
+	 * 200: Conversation was marked as sensitive
+	 */
+	#[NoAdminRequired]
+	#[FederationSupported]
+	#[RequireLoggedInParticipant]
+	public function markConversationAsSensitive(): DataResponse {
+		$this->participantService->markConversationAsSensitive($this->participant);
+		return new DataResponse($this->formatRoom($this->room, $this->participant));
+	}
+
+	/**
+	 * Mark a conversation as insensitive (last message is visible / push preview is shown)
+	 *
+	 * Required capability: `sensitive-conversations`
+	 *
+	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>
+	 *
+	 * 200: Conversation was marked as insensitive
+	 */
+	#[NoAdminRequired]
+	#[FederationSupported]
+	#[RequireLoggedInParticipant]
+	public function markConversationAsInsensitive(): DataResponse {
+		$this->participantService->markConversationAsInsensitive($this->participant);
 		return new DataResponse($this->formatRoom($this->room, $this->participant));
 	}
 
@@ -1860,7 +1951,20 @@ class RoomController extends AEnvironmentAwareOCSController {
 			}
 		}
 
-		return new DataResponse($this->formatRoom($room, $participant), Http::STATUS_OK, $headers);
+		$userStatuses = null;
+		if ($this->userId !== null
+			&& $this->appManager->isEnabledForUser('user_status')
+			&& $room->getType() === Room::TYPE_ONE_TO_ONE) {
+			$actorIds = json_decode($room->getName(), true) ?? [];
+			if (is_array($actorIds)) {
+				$actorIds = array_filter($actorIds, fn ($actorId) => $actorId !== $this->userId);
+				if (!empty($actorIds)) {
+					$userStatuses = $this->statusManager->getUserStatuses($actorIds);
+				}
+			}
+		}
+
+		return new DataResponse($this->formatRoom($room, $participant, $userStatuses), Http::STATUS_OK, $headers);
 	}
 
 	/**
@@ -1879,6 +1983,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[PublicPage]
 	#[BruteForceProtection(action: 'talkRoomToken')]
 	#[BruteForceProtection(action: 'talkFederationAccess')]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
 	public function joinFederatedRoom(string $token, ?string $sessionId): DataResponse {
 		if (!$this->federationAuthenticator->isFederationRequest()) {
 			$response = new DataResponse(null, Http::STATUS_NOT_FOUND);
@@ -1931,7 +2036,13 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[BruteForceProtection(action: 'talkSipBridgeSecret')]
 	#[OpenAPI(scope: 'backend-sipbridge')]
 	#[RequireRoom]
+	#[RequestHeader(name: 'talk-sipbridge-random', description: 'Random seed used to generate the request checksum', indirect: true)]
+	#[RequestHeader(name: 'talk-sipbridge-checksum', description: 'Checksum over the request body to verify authenticity from the Sipbridge', indirect: true)]
 	public function verifyDialInPin(string $pin): DataResponse {
+		if (!$this->talkConfig->isSIPConfigured()) {
+			return new DataResponse(null, Http::STATUS_NOT_IMPLEMENTED);
+		}
+
 		try {
 			if (!$this->validateSIPBridgeRequest($this->room->getToken())) {
 				$response = new DataResponse(null, Http::STATUS_UNAUTHORIZED);
@@ -1944,10 +2055,6 @@ class RoomController extends AEnvironmentAwareOCSController {
 			return $response;
 		}
 
-		if (!$this->talkConfig->isSIPConfigured()) {
-			return new DataResponse(null, Http::STATUS_NOT_IMPLEMENTED);
-		}
-
 		try {
 			$participant = $this->participantService->getParticipantByPin($this->room, $pin);
 		} catch (ParticipantNotFoundException $e) {
@@ -1955,6 +2062,70 @@ class RoomController extends AEnvironmentAwareOCSController {
 		}
 
 		return new DataResponse($this->formatRoom($this->room, $participant, skipLastMessage: true));
+	}
+
+	/**
+	 * Direct dial-in (SIP bridge)
+	 *
+	 * Required capability: `sip-direct-dialin`
+	 *
+	 * @param string $phoneNumber Phone number that is called
+	 * @param string $caller Phone number of the person calling in
+	 * @return DataResponse<Http::STATUS_OK, TalkRoom, array{}>|DataResponse<Http::STATUS_UNAUTHORIZED|Http::STATUS_NOT_FOUND|Http::STATUS_INTERNAL_SERVER_ERROR|Http::STATUS_NOT_IMPLEMENTED, null, array{}>
+	 *
+	 * 200: Call conversation created
+	 * 401: SIP request invalid
+	 * 404: Number is not assigned to any user
+	 * 500: Error occurred while creating conversation
+	 * 501: SIP dial-in is not configured
+	 */
+	#[PublicPage]
+	#[BruteForceProtection(action: 'talkSipBridgeSecret')]
+	#[OpenAPI(scope: 'backend-sipbridge')]
+	#[RequestHeader(name: 'talk-sipbridge-random', description: 'Random seed used to generate the request checksum', indirect: true)]
+	#[RequestHeader(name: 'talk-sipbridge-checksum', description: 'Checksum over the request body to verify authenticity from the Sipbridge', indirect: true)]
+	public function directDialIn(string $phoneNumber, string $caller): DataResponse {
+		if (!$this->talkConfig->isSIPConfigured()) {
+			return new DataResponse(null, Http::STATUS_NOT_IMPLEMENTED);
+		}
+
+		try {
+			if (!$this->validateSIPBridgeRequest($phoneNumber)) {
+				$response = new DataResponse(null, Http::STATUS_UNAUTHORIZED);
+				$response->throttle(['action' => 'talkSipBridgeSecret']);
+				return $response;
+			}
+		} catch (UnauthorizedException) {
+			$response = new DataResponse(null, Http::STATUS_UNAUTHORIZED);
+			$response->throttle(['action' => 'talkSipBridgeSecret']);
+			return $response;
+		}
+
+		try {
+			$entity = $this->phoneService->getAccountToCallForPhoneNumber($phoneNumber);
+		} catch (DoesNotExistException) {
+			return new DataResponse(null, Http::STATUS_NOT_FOUND);
+		}
+
+		$caller = trim($caller);
+		// TODO: Use later and get name from addressbook? $cleanedCaller = $this->phoneNumberUtil->convertToStandardFormat($caller);
+		$user = $this->userManager->get($entity->getActorId());
+		try {
+			$room = $this->roomService->createConversation(
+				Room::TYPE_GROUP,
+				$caller,
+				$user,
+				Room::OBJECT_TYPE_PHONE_TEMPORARY,
+				Room::OBJECT_ID_PHONE_INCOMING,
+				sipEnabled: Webinary::SIP_ENABLED_NO_PIN,
+			);
+		} catch (CreationException|PasswordException $e) {
+			$this->logger->error('Error occurred while creating SIP direct dial-in conversation', ['exception' => $e]);
+			return new DataResponse(null, Http::STATUS_INTERNAL_SERVER_ERROR);
+		}
+
+		$participant = $this->participantService->joinRoomAsNewGuest($this->roomService, $room, '', true, displayName: $caller);
+		return new DataResponse($this->formatRoom($room, $participant));
 	}
 
 	/**
@@ -1974,7 +2145,13 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[BruteForceProtection(action: 'talkSipBridgeSecret')]
 	#[OpenAPI(scope: 'backend-sipbridge')]
 	#[RequireRoom]
+	#[RequestHeader(name: 'talk-sipbridge-random', description: 'Random seed used to generate the request checksum', indirect: true)]
+	#[RequestHeader(name: 'talk-sipbridge-checksum', description: 'Checksum over the request body to verify authenticity from the Sipbridge', indirect: true)]
 	public function verifyDialOutNumber(string $number, array $options = []): DataResponse {
+		if (!$this->talkConfig->isSIPConfigured() || !$this->talkConfig->isSIPDialOutEnabled()) {
+			return new DataResponse(null, Http::STATUS_NOT_IMPLEMENTED);
+		}
+
 		try {
 			if (!$this->validateSIPBridgeRequest($this->room->getToken())) {
 				$response = new DataResponse(null, Http::STATUS_UNAUTHORIZED);
@@ -1985,10 +2162,6 @@ class RoomController extends AEnvironmentAwareOCSController {
 			$response = new DataResponse(null, Http::STATUS_UNAUTHORIZED);
 			$response->throttle(['action' => 'talkSipBridgeSecret']);
 			return $response;
-		}
-
-		if (!$this->talkConfig->isSIPConfigured() || !$this->talkConfig->isSIPDialOutEnabled()) {
-			return new DataResponse(null, Http::STATUS_NOT_IMPLEMENTED);
 		}
 
 		if (!isset($options['actorId'], $options['actorType']) || $options['actorType'] !== Attendee::ACTOR_PHONES) {
@@ -2021,6 +2194,8 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[BruteForceProtection(action: 'talkSipBridgeSecret')]
 	#[OpenAPI(scope: 'backend-sipbridge')]
 	#[RequireRoom]
+	#[RequestHeader(name: 'talk-sipbridge-random', description: 'Random seed used to generate the request checksum', indirect: true)]
+	#[RequestHeader(name: 'talk-sipbridge-checksum', description: 'Checksum over the request body to verify authenticity from the Sipbridge', indirect: true)]
 	public function createGuestByDialIn(): DataResponse {
 		try {
 			if (!$this->validateSIPBridgeRequest($this->room->getToken())) {
@@ -2060,7 +2235,13 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[BruteForceProtection(action: 'talkSipBridgeSecret')]
 	#[OpenAPI(scope: 'backend-sipbridge')]
 	#[RequireRoom]
+	#[RequestHeader(name: 'talk-sipbridge-random', description: 'Random seed used to generate the request checksum', indirect: true)]
+	#[RequestHeader(name: 'talk-sipbridge-checksum', description: 'Checksum over the request body to verify authenticity from the Sipbridge', indirect: true)]
 	public function rejectedDialOutRequest(string $callId, array $options = []): DataResponse {
+		if (!$this->talkConfig->isSIPConfigured() || !$this->talkConfig->isSIPDialOutEnabled()) {
+			return new DataResponse(null, Http::STATUS_NOT_IMPLEMENTED);
+		}
+
 		try {
 			if (!$this->validateSIPBridgeRequest($this->room->getToken())) {
 				$response = new DataResponse(null, Http::STATUS_UNAUTHORIZED);
@@ -2075,10 +2256,6 @@ class RoomController extends AEnvironmentAwareOCSController {
 
 		if (empty($options['attendeeId'])) {
 			return new DataResponse(null, Http::STATUS_BAD_REQUEST);
-		}
-
-		if (!$this->talkConfig->isSIPConfigured() || !$this->talkConfig->isSIPDialOutEnabled()) {
-			return new DataResponse(null, Http::STATUS_NOT_IMPLEMENTED);
 		}
 
 		try {
@@ -2163,6 +2340,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[OpenAPI(scope: OpenAPI::SCOPE_FEDERATION)]
 	#[PublicPage]
 	#[BruteForceProtection(action: 'talkRoomToken')]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
 	public function leaveFederatedRoom(string $token, string $sessionId): DataResponse {
 		if (!$this->federationAuthenticator->isFederationRequest()) {
 			$response = new DataResponse(null, Http::STATUS_NOT_FOUND);
@@ -2603,6 +2781,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[FederationSupported]
 	#[PublicPage]
 	#[RequireParticipant]
+	#[RequestHeader(name: 'x-nextcloud-federation', description: 'Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request', indirect: true)]
 	public function getCapabilities(): DataResponse {
 		$headers = [];
 		if ($this->room->isFederatedConversation()) {
@@ -2661,7 +2840,7 @@ class RoomController extends AEnvironmentAwareOCSController {
 	 * @param ?int $end Unix timestamp when the meeting ends, falls back to 60 minutes after start
 	 * @param ?string $title Title or summary of the event, falling back to the conversation name if none is given
 	 * @param ?string $description Description of the event, falling back to the conversation description if none is given
-	 * @return DataResponse<Http::STATUS_OK, null, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{error: 'calendar'|'email'|'end'|'start'}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, null, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{error: 'calendar'|'conversation'|'email'|'end'|'start'}, array{}>
 	 *
 	 * 200: Meeting scheduled
 	 * 400: Meeting could not be created successfully
@@ -2669,6 +2848,10 @@ class RoomController extends AEnvironmentAwareOCSController {
 	#[NoAdminRequired]
 	#[RequireLoggedInModeratorParticipant]
 	public function scheduleMeeting(string $calendarUri, int $start, ?array $attendeeIds = null, ?int $end = null, ?string $title = null, ?string $description = null): DataResponse {
+		if ($this->room->getType() === Room::TYPE_ONE_TO_ONE_FORMER) {
+			return new DataResponse(['error' => 'conversation'], Http::STATUS_BAD_REQUEST);
+		}
+
 		$eventBuilder = $this->calendarManager->createEventBuilder();
 		$calendars = $this->calendarManager->getCalendarsForPrincipal('principals/users/' . $this->userId, [$calendarUri]);
 
@@ -2711,6 +2894,10 @@ class RoomController extends AEnvironmentAwareOCSController {
 		$eventBuilder->setStartDate($startDate);
 		$eventBuilder->setEndDate($endDate);
 		$eventBuilder->setStatus(CalendarEventStatus::CONFIRMED);
+
+		if ($this->room->getType() === Room::TYPE_ONE_TO_ONE) {
+			$this->participantService->ensureOneToOneRoomIsFilled($this->room);
+		}
 
 		$userAttendees = $this->participantService->getParticipantsByActorType($this->room, Attendee::ACTOR_USERS);
 		foreach ($userAttendees as $userAttendee) {

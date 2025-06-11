@@ -7,8 +7,21 @@
 	<NcAppNavigation ref="leftSidebar" :aria-label="t('spreed', 'Conversation list')">
 		<template #search>
 			<div class="new-conversation">
+				<TransitionWrapper name="radial-reveal">
+					<NcButton v-show="searchText === ''"
+						type="tertiary"
+						:class="{ 'hidden-visually': isSearching }"
+						class="talk-home-button"
+						:title="t('spreed', 'Talk home')"
+						:aria-label="t('spreed', 'Talk home')"
+						@click="showTalkDashboard">
+						<template #icon>
+							<IconHome :size="20" />
+						</template>
+					</NcButton>
+				</TransitionWrapper>
 				<div class="conversations-search"
-					:class="{'conversations-search--expanded': isSearching}">
+					:class="{ 'conversations-search--expanded': isSearching }">
 					<SearchBox ref="searchBox"
 						:value.sync="searchText"
 						:is-focused.sync="isFocused"
@@ -22,10 +35,12 @@
 					<NcActions v-show="searchText === ''"
 						:type="isFiltered ? 'secondary' : 'tertiary'"
 						class="filters"
-						:class="{'hidden-visually': isSearching}">
+						:class="{ 'hidden-visually': isSearching }">
 						<template #icon>
 							<FilterIcon :size="15" />
 						</template>
+						<NcActionCaption :name="t('spreed', 'Filter conversations by')" />
+
 						<NcActionButton close-after-click
 							type="checkbox"
 							:model-value="filters.includes('mentions')"
@@ -33,7 +48,7 @@
 							<template #icon>
 								<AtIcon :size="20" />
 							</template>
-							{{ t('spreed', 'Filter unread mentions') }}
+							{{ t('spreed', 'Unread mentions') }}
 						</NcActionButton>
 
 						<NcActionButton close-after-click
@@ -43,7 +58,17 @@
 							<template #icon>
 								<MessageBadge :size="20" />
 							</template>
-							{{ t('spreed', 'Filter unread messages') }}
+							{{ t('spreed', 'Unread messages') }}
+						</NcActionButton>
+
+						<NcActionButton close-after-click
+							type="checkbox"
+							:model-value="filters.includes('events')"
+							@click="handleFilter('events')">
+							<template #icon>
+								<IconCalendar :size="20" />
+							</template>
+							{{ t('spreed', 'Meeting conversations') }}
 						</NcActionButton>
 
 						<NcActionButton v-if="isFiltered"
@@ -62,7 +87,7 @@
 				<TransitionWrapper name="radial-reveal">
 					<NcActions v-show="searchText === ''"
 						class="actions"
-						:class="{'hidden-visually': isSearching}">
+						:class="{ 'hidden-visually': isSearching }">
 						<template #icon>
 							<ChatPlus :size="20" />
 						</template>
@@ -140,7 +165,7 @@
 		<template #list>
 			<!-- Conversations List -->
 			<template v-if="!isSearching">
-				<NcEmptyContent v-if="initialisedConversations && filteredConversationsList.length === 0"
+				<NcEmptyContent v-if="conversationsInitialised && filteredConversationsList.length === 0"
 					:name="emptyContentLabel"
 					:description="emptyContentDescription">
 					<template #icon>
@@ -161,7 +186,7 @@
 				<ConversationsListVirtual v-show="filteredConversationsList.length > 0"
 					ref="scroller"
 					:conversations="filteredConversationsList"
-					:loading="!initialisedConversations"
+					:loading="!conversationsInitialised"
 					:compact="isCompact"
 					class="scroller"
 					@scroll.native="debounceHandleScroll" />
@@ -207,7 +232,9 @@
 							<IconArchive :size="20" />
 						</template>
 						{{ t('spreed', 'Archived conversations') }}
-						<span v-if="showArchivedConversationsBubble" class="left-sidebar__settings-button-bubble">{{ '⬤' }}</span>
+						<span v-if="showArchivedConversationsBubble" class="left-sidebar__settings-button-bubble">
+							⬤
+						</span>
 					</NcButton>
 				</template>
 
@@ -223,30 +250,15 @@
 </template>
 
 <script>
-import debounce from 'debounce'
-import { ref } from 'vue'
-
-import AccountMultiplePlus from 'vue-material-design-icons/AccountMultiplePlus.vue'
-import IconArchive from 'vue-material-design-icons/Archive.vue'
-import IconArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
-import AtIcon from 'vue-material-design-icons/At.vue'
-import ChatPlus from 'vue-material-design-icons/ChatPlus.vue'
-import Cog from 'vue-material-design-icons/Cog.vue'
-import FilterIcon from 'vue-material-design-icons/Filter.vue'
-import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
-import List from 'vue-material-design-icons/FormatListBulleted.vue'
-import MessageBadge from 'vue-material-design-icons/MessageBadge.vue'
-import MessageOutline from 'vue-material-design-icons/MessageOutline.vue'
-import Note from 'vue-material-design-icons/NoteEditOutline.vue'
-import Phone from 'vue-material-design-icons/Phone.vue'
-import Plus from 'vue-material-design-icons/Plus.vue'
-
 import { showError } from '@nextcloud/dialogs'
 import { emit } from '@nextcloud/event-bus'
 import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
-
+import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
+import debounce from 'debounce'
+import { ref } from 'vue'
 import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActionCaption from '@nextcloud/vue/components/NcActionCaption'
 import NcActions from '@nextcloud/vue/components/NcActions'
 import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
@@ -254,17 +266,30 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcChip from '@nextcloud/vue/components/NcChip'
 import NcCounterBubble from '@nextcloud/vue/components/NcCounterBubble'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
-import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
-
+import AccountMultiplePlus from 'vue-material-design-icons/AccountMultiplePlus.vue'
+import IconArchive from 'vue-material-design-icons/Archive.vue'
+import IconArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
+import AtIcon from 'vue-material-design-icons/At.vue'
+import IconCalendar from 'vue-material-design-icons/CalendarBlank.vue'
+import ChatPlus from 'vue-material-design-icons/ChatPlus.vue'
+import Cog from 'vue-material-design-icons/Cog.vue'
+import FilterIcon from 'vue-material-design-icons/Filter.vue'
+import FilterRemoveIcon from 'vue-material-design-icons/FilterRemove.vue'
+import List from 'vue-material-design-icons/FormatListBulleted.vue'
+import IconHome from 'vue-material-design-icons/Home.vue'
+import MessageBadge from 'vue-material-design-icons/MessageBadge.vue'
+import MessageOutline from 'vue-material-design-icons/MessageOutline.vue'
+import Note from 'vue-material-design-icons/NoteEditOutline.vue'
+import Phone from 'vue-material-design-icons/Phone.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
+import NewConversationDialog from '../NewConversationDialog/NewConversationDialog.vue'
+import SearchBox from '../UIShared/SearchBox.vue'
+import TransitionWrapper from '../UIShared/TransitionWrapper.vue'
 import CallPhoneDialog from './CallPhoneDialog/CallPhoneDialog.vue'
 import ConversationsListVirtual from './ConversationsList/ConversationsListVirtual.vue'
 import InvitationHandler from './InvitationHandler.vue'
 import OpenConversationsList from './OpenConversationsList/OpenConversationsList.vue'
 import SearchConversationsResults from './SearchConversationsResults/SearchConversationsResults.vue'
-import NewConversationDialog from '../NewConversationDialog/NewConversationDialog.vue'
-import SearchBox from '../UIShared/SearchBox.vue'
-import TransitionWrapper from '../UIShared/TransitionWrapper.vue'
-
 import { useArrowNavigation } from '../../composables/useArrowNavigation.js'
 import { ATTENDEE, CONVERSATION } from '../../constants.ts'
 import BrowserStorage from '../../services/BrowserStorage.js'
@@ -281,7 +306,7 @@ import { useFederationStore } from '../../stores/federation.ts'
 import { useSettingsStore } from '../../stores/settings.js'
 import { useTalkHashStore } from '../../stores/talkHash.js'
 import CancelableRequest from '../../utils/cancelableRequest.js'
-import { hasUnreadMentions, hasCall, filterConversation, shouldIncludeArchived } from '../../utils/conversation.js'
+import { filterConversation, hasCall, hasUnreadMentions, shouldIncludeArchived } from '../../utils/conversation.ts'
 import { requestTabLeadership } from '../../utils/requestTabLeadership.js'
 
 const isFederationEnabled = getTalkConfig('local', 'federation', 'enabled')
@@ -294,6 +319,7 @@ const supportsArchive = hasTalkFeature('local', 'archived-conversations-v2')
 const FILTER_LABELS = {
 	unread: t('spreed', 'Unread'),
 	mentions: t('spreed', 'Mentions'),
+	events: t('spreed', 'Meetings'),
 	default: '',
 }
 
@@ -313,6 +339,7 @@ export default {
 		OpenConversationsList,
 		NcActions,
 		NcActionButton,
+		NcActionCaption,
 		TransitionWrapper,
 		ConversationsListVirtual,
 		SearchConversationsResults,
@@ -325,6 +352,8 @@ export default {
 		FilterRemoveIcon,
 		IconArchive,
 		IconArrowLeft,
+		IconCalendar,
+		IconHome,
 		Phone,
 		Plus,
 		ChatPlus,
@@ -374,8 +403,7 @@ export default {
 			searchResultsListedConversations: [],
 			contactsLoading: false,
 			listedConversationsLoading: false,
-			canStartConversations: loadState('spreed', 'start_conversations'),
-			initialisedConversations: false,
+			canStartConversations: getTalkConfig('local', 'conversations', 'can-create'),
 			cancelSearchPossibleConversations: () => {},
 			cancelSearchListedConversations: () => {},
 			debounceFetchSearchResults: () => {},
@@ -432,7 +460,7 @@ export default {
 
 		showArchivedConversationsBubble() {
 			return this.archivedConversationsList
-				.some(conversation => hasUnreadMentions(conversation) || hasCall(conversation))
+				.some((conversation) => hasUnreadMentions(conversation) || hasCall(conversation))
 		},
 
 		filteredConversationsList() {
@@ -458,7 +486,7 @@ export default {
 		},
 
 		hasNoteToSelf() {
-			return this.conversationsList.find(conversation => conversation.type === CONVERSATION.TYPE.NOTE_TO_SELF)
+			return this.conversationsList.find((conversation) => conversation.type === CONVERSATION.TYPE.NOTE_TO_SELF)
 		},
 
 		pendingInvitationsCount() {
@@ -474,6 +502,10 @@ export default {
 		isFiltered() {
 			return this.filters.length !== 0
 		},
+
+		conversationsInitialised() {
+			return this.$store.getters.conversationsInitialised
+		},
 	},
 
 	watch: {
@@ -482,6 +514,7 @@ export default {
 				this.isNavigating = true
 			}
 		},
+
 		isCompact(value) {
 			if (!value) {
 				// Last messages are likely missing from the store, need to fetch with modifiedSince=0
@@ -489,7 +522,7 @@ export default {
 				this.forceFullRoomListRefreshAfterXLoops = 10
 				this.fetchConversations()
 			}
-		}
+		},
 	},
 
 	beforeMount() {
@@ -509,26 +542,26 @@ export default {
 		talkBroadcastChannel.addEventListener('message', (event) => {
 			if (this.isCurrentTabLeader) {
 				switch (event.data.message) {
-				case 'force-fetch-all-conversations':
-					if (event.data.options?.all) {
-						this.roomListModifiedBefore = 0
-						this.forceFullRoomListRefreshAfterXLoops = 10
-					}
-					this.debounceFetchConversations()
-					break
+					case 'force-fetch-all-conversations':
+						if (event.data.options?.all) {
+							this.roomListModifiedBefore = 0
+							this.forceFullRoomListRefreshAfterXLoops = 10
+						}
+						this.debounceFetchConversations()
+						break
 				}
 			} else {
 				switch (event.data.message) {
-				case 'update-conversations':
-					this.$store.dispatch('patchConversations', {
-						conversations: event.data.conversations,
-						withRemoving: event.data.withRemoving,
-					})
-					this.federationStore.updatePendingSharesCount(event.data.invites)
-					break
-				case 'update-nextcloud-talk-hash':
-					this.talkHashStore.setNextcloudTalkHash(event.data.hash)
-					break
+					case 'update-conversations':
+						this.$store.dispatch('patchConversations', {
+							conversations: event.data.conversations,
+							withRemoving: event.data.withRemoving,
+						})
+						this.federationStore.updatePendingSharesCount(event.data.invites)
+						break
+					case 'update-nextcloud-talk-hash':
+						this.talkHashStore.setNextcloudTalkHash(event.data.hash)
+						break
 				}
 			}
 		})
@@ -542,6 +575,9 @@ export default {
 		EventBus.on('should-refresh-conversations', this.handleShouldRefreshConversations)
 		EventBus.once('conversations-received', this.handleConversationsReceived)
 		EventBus.on('route-change', this.onRouteChange)
+		EventBus.on('new-conversation-dialog:show', this.showModalNewConversation)
+		EventBus.on('open-conversations-list:show', this.showModalListConversations)
+		EventBus.on('call-phone-dialog:show', this.showModalCallPhoneDialog)
 	},
 
 	beforeDestroy() {
@@ -552,6 +588,9 @@ export default {
 		EventBus.off('should-refresh-conversations', this.handleShouldRefreshConversations)
 		EventBus.off('conversations-received', this.handleConversationsReceived)
 		EventBus.off('route-change', this.onRouteChange)
+		EventBus.off('new-conversation-dialog:show', this.showModalNewConversation)
+		EventBus.off('open-conversations-list:show', this.showModalListConversations)
+		EventBus.off('call-phone-dialog:show', this.showModalCallPhoneDialog)
 
 		this.cancelSearchPossibleConversations()
 		this.cancelSearchPossibleConversations = null
@@ -589,11 +628,11 @@ export default {
 				this.filters = []
 			} else {
 				if (this.filters.includes(filter)) {
-					this.filters = this.filters.filter(f => f !== filter)
+					this.filters = this.filters.filter((f) => f !== filter)
 				} else {
 					// Hardcode 'unread' and 'mentions' to behave like radio buttons
 					if (filter === 'unread' || filter === 'mentions') {
-						this.filters = [...this.filters.filter(f => f !== 'unread' && f !== 'mentions'), filter]
+						this.filters = [...this.filters.filter((f) => f !== 'unread' && f !== 'mentions'), filter]
 					} else {
 						this.filters = [...this.filters, filter]
 					}
@@ -704,7 +743,7 @@ export default {
 				this.$router.push({
 					name: 'conversation',
 					params: { token: conversation.token },
-				}).catch(err => console.debug(`Error while pushing the new conversation's route: ${err}`))
+				}).catch((err) => console.debug(`Error while pushing the new conversation's route: ${err}`))
 			} else {
 				// For other types, show the modal directly
 				this.$refs.newConversationDialog.showModalForItem(item)
@@ -717,7 +756,7 @@ export default {
 			this.$router.push({
 				name: 'conversation',
 				params: { token: conversation.token },
-			}).catch(err => console.debug(`Error while pushing the new conversation's route: ${err}`))
+			}).catch((err) => console.debug(`Error while pushing the new conversation's route: ${err}`))
 		},
 
 		async createConversation(roomName) {
@@ -814,7 +853,6 @@ export default {
 					}
 				}
 
-				this.initialisedConversations = true
 				/**
 				 * Emits a global event that is used in App.vue to update the page title once the
 				 * ( if the current route is a conversation and once the conversations are received)
@@ -830,7 +868,6 @@ export default {
 		async restoreConversations() {
 			try {
 				await this.$store.dispatch('restoreConversations')
-				this.initialisedConversations = true
 				EventBus.emit('conversations-received', { singleConversation: false })
 			} catch (error) {
 				console.debug('Error while restoring conversations: ', error)
@@ -902,6 +939,11 @@ export default {
 				})
 			}
 		},
+
+		showTalkDashboard() {
+			this.$router.push({ name: 'root' })
+				.catch((err) => console.debug(`Error while pushing the dashboard route: ${err}`))
+		},
 	},
 }
 </script>
@@ -965,16 +1007,23 @@ export default {
 	transition: all 0.15s ease;
 	z-index: 1;
 	// TODO replace with NcAppNavigationSearch
-	width: calc(100% - var(--default-grid-baseline) * 2 - var(--default-clickable-area) * 2);
+	width: calc(100% - var(--default-grid-baseline) * 3 - var(--default-clickable-area) * 3);
 	display: flex;
+	margin-inline-start: calc(var(--default-clickable-area) + var(--default-grid-baseline));
 
 	&--expanded {
 		width: 100%;
+		margin-inline-start: 0;
 	}
 
 	:deep(.input-field) {
 		margin-block-start: 0;
 	}
+}
+
+.talk-home-button {
+	margin-inline-end: var(--default-grid-baseline);
+	position: absolute !important;
 }
 
 .conversations__filters {
@@ -1003,36 +1052,5 @@ export default {
 
 :deep(.app-navigation__list) {
 	padding: 0 !important;
-}
-
-// Overwrite NcListItem styles
-:deep(.list-item) {
-	overflow: hidden;
-	outline-offset: -2px;
-
-	.avatardiv .avatardiv__user-status {
-		inset-inline-end: -2px !important;
-		bottom: -2px !important;
-		min-height: 11px !important;
-		min-width: 11px !important;
-	}
-}
-
-/* Overwrite NcListItem styles for compact view */
-:deep(.list-item--compact) {
-	padding-block: 0 !important;
-}
-
-:deep(.list-item--compact:not(:has(.list-item-content__subname))) {
-	--list-item-height: calc(var(--clickable-area-small, 24px) + 4px) !important;
-}
-
-:deep(.list-item--compact .button-vue--size-normal) {
-	--button-size: var(--clickable-area-small, 24px);
-	--button-radius: var(--border-radius);
-}
-
-:deep(.list-item--compact .list-item-content__actions) {
-	height: var(--clickable-area-small, 24px);
 }
 </style>

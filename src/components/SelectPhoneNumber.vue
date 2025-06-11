@@ -21,17 +21,12 @@
 </template>
 
 <script>
-import { parsePhoneNumberFromString, validatePhoneNumberLength } from 'libphonenumber-js'
-
-import Phone from 'vue-material-design-icons/Phone.vue'
-
 import { t } from '@nextcloud/l10n'
-
+import { parsePhoneNumberFromString, validatePhoneNumberLength } from 'libphonenumber-js'
 import NcAppNavigationCaption from '@nextcloud/vue/components/NcAppNavigationCaption'
 import NcListItem from '@nextcloud/vue/components/NcListItem'
-
+import Phone from 'vue-material-design-icons/Phone.vue'
 import Hint from './UIShared/Hint.vue'
-
 import { ATTENDEE, AVATAR } from '../constants.ts'
 
 export default {
@@ -82,12 +77,12 @@ export default {
 
 		errorHint() {
 			switch (validatePhoneNumberLength(this.value)) {
-			case 'INVALID_LENGTH': return t('spreed', 'Number length is not valid')
-			case 'INVALID_COUNTRY': return t('spreed', 'Region code is not valid')
-			case 'TOO_SHORT': return t('spreed', 'Number length is too short')
-			case 'TOO_LONG': return t('spreed', 'Number length is too long')
-			case 'NOT_A_NUMBER': return t('spreed', 'Number is not valid')
-			default: return ''
+				case 'INVALID_LENGTH': return t('spreed', 'Number length is not valid')
+				case 'INVALID_COUNTRY': return t('spreed', 'Region code is not valid')
+				case 'TOO_SHORT': return t('spreed', 'Number length is too short')
+				case 'TOO_LONG': return t('spreed', 'Number length is too long')
+				case 'NOT_A_NUMBER': return t('spreed', 'Number is not valid')
+				default: return ''
 			}
 		},
 	},
@@ -106,14 +101,14 @@ export default {
 				label: phoneNumber,
 				phoneNumber,
 			})
-		}
+		},
 	},
 
 	methods: {
 		t,
 		selectPhoneNumber() {
 			this.$emit('select', this.participantPhoneItem)
-		}
+		},
 	},
 }
 </script>

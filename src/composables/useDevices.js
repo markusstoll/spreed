@@ -5,11 +5,11 @@
 
 import createHark from 'hark'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-
+import { useSoundsStore } from '../stores/sounds.js'
 import attachMediaStream from '../utils/attachmediastream.js'
 import TrackToStream from '../utils/media/pipeline/TrackToStream.js'
 import VirtualBackground from '../utils/media/pipeline/VirtualBackground.js'
-import { mediaDevicesManager as mediaDevicesManagerInstance } from '../utils/webrtc/index.js'
+import { callParticipantsAudioPlayer, mediaDevicesManager as mediaDevicesManagerInstance } from '../utils/webrtc/index.js'
 
 /**
  * Check whether the user joined the call of the current token in this PHP session or not
@@ -23,6 +23,9 @@ export function useDevices(video, initializeOnMounted) {
 	let initialized = false
 	let pendingGetUserMediaAudioCount = 0
 	let pendingGetUserMediaVideoCount = 0
+
+	const soundsStore = useSoundsStore()
+
 	const hark = ref(null)
 	const videoTrackToStream = ref(null)
 	const mediaDevicesManager = reactive(mediaDevicesManagerInstance)
@@ -63,6 +66,19 @@ export function useDevices(video, initializeOnMounted) {
 		return audioTracks.length < 1 ? null : audioTracks[0].getSettings().deviceId
 	})
 
+	const audioOutputId = computed({
+		get() {
+			return mediaDevicesManager.attributes.audioOutputId
+		},
+		set(value) {
+			mediaDevicesManager.set('audioOutputId', value)
+		},
+	})
+
+	const audioOutputSupported = computed(() => {
+		return mediaDevicesManager.isAudioOutputSelectSupported
+	})
+
 	const videoInputId = computed({
 		get() {
 			return mediaDevicesManager.attributes.videoInputId
@@ -87,6 +103,16 @@ export function useDevices(video, initializeOnMounted) {
 	watch(audioInputId, () => {
 		if (initialized) {
 			updateAudioStream()
+		}
+	})
+
+	watch(audioOutputId, (deviceId) => {
+		if (initialized && deviceId !== undefined) {
+			soundsStore.setGeneralAudioOutput(deviceId)
+
+			if (callParticipantsAudioPlayer) {
+				callParticipantsAudioPlayer.setGeneralAudioOutput(deviceId)
+			}
 		}
 	})
 
@@ -143,6 +169,10 @@ export function useDevices(video, initializeOnMounted) {
 		mediaDevicesManager.enableDeviceEvents()
 		updateAudioStream()
 		updateVideoStream()
+
+		if (mediaDevicesManager.attributes.audioOutputId !== undefined) {
+			soundsStore.setGeneralAudioOutput(mediaDevicesManager.attributes.audioOutputId)
+		}
 	}
 
 	/**
@@ -155,7 +185,7 @@ export function useDevices(video, initializeOnMounted) {
 
 	/**
 	 * Update preference counters for devices (audio and video)
-	 * @param {string} kind the kind of the input stream to update ('audioinput' or 'videoinput')
+	 * @param {string} kind the kind of the input stream to update ('audioinput', 'audiooutput' or 'videoinput')
 	 * @public
 	 */
 	function updatePreferences(kind) {
@@ -204,7 +234,7 @@ export function useDevices(video, initializeOnMounted) {
 			return
 		}
 
-		audioStream.value.getTracks().forEach(track => track.stop())
+		audioStream.value.getTracks().forEach((track) => track.stop())
 		audioStream.value = null
 		audioStreamError.value = null
 
@@ -253,16 +283,16 @@ export function useDevices(video, initializeOnMounted) {
 		pendingGetUserMediaAudioCount = 1
 
 		mediaDevicesManager.getUserMedia({ audio: true })
-			.then(stream => {
+			.then((stream) => {
 				if (!initialized) {
 					// The promise was fulfilled once the stream is no
 					// longer needed, so just discard it.
-					stream.getTracks().forEach(track => track.stop())
+					stream.getTracks().forEach((track) => track.stop())
 				} else {
 					setAudioStream(stream)
 				}
 			})
-			.catch(error => {
+			.catch((error) => {
 				console.error('Error getting audio stream: ' + error.name + ': ' + error.message)
 				audioStreamError.value = error
 				setAudioStream(null)
@@ -302,7 +332,7 @@ export function useDevices(video, initializeOnMounted) {
 			return
 		}
 
-		videoStream.value.getTracks().forEach(track => track.stop())
+		videoStream.value.getTracks().forEach((track) => track.stop())
 		videoStream.value = null
 		videoStreamError.value = null
 
@@ -349,16 +379,16 @@ export function useDevices(video, initializeOnMounted) {
 		pendingGetUserMediaVideoCount = 1
 
 		mediaDevicesManager.getUserMedia({ video: true })
-			.then(stream => {
+			.then((stream) => {
 				if (!initialized) {
 					// The promise was fulfilled once the stream is no
 					// longer needed, so just discard it.
-					stream.getTracks().forEach(track => track.stop())
+					stream.getTracks().forEach((track) => track.stop())
 				} else {
 					setVideoStream(stream)
 				}
 			})
-			.catch(error => {
+			.catch((error) => {
 				console.error('Error getting video stream: ' + error.name + ': ' + error.message)
 				videoStreamError.value = error
 				setVideoStream(null)
@@ -376,7 +406,9 @@ export function useDevices(video, initializeOnMounted) {
 		audioPreviewAvailable,
 		videoPreviewAvailable,
 		audioInputId,
+		audioOutputId,
 		videoInputId,
+		audioOutputSupported,
 		// MediaDevicesPreview only
 		audioStream,
 		audioStreamError,

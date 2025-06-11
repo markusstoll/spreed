@@ -69,23 +69,26 @@
 			@update:model-value="setBlurVirtualBackgroundEnabled">
 			{{ t('spreed', 'Enable blur background by default for all conversation') }}
 		</NcCheckboxRadioSwitch>
+		<MediaDevicesSelector v-if="audioOutputSupported"
+			kind="audiooutput"
+			:devices="devices"
+			:device-id="audioOutputId"
+			@refresh="updateDevices"
+			@update:deviceId="handleAudioOutputIdChange" />
+		<MediaDevicesSpeakerTest />
 	</div>
 </template>
 
 <script>
+import { t } from '@nextcloud/l10n'
 import { ref } from 'vue'
-
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import AlertCircle from 'vue-material-design-icons/AlertCircle.vue'
 import MicrophoneOff from 'vue-material-design-icons/MicrophoneOff.vue'
 import VideoOff from 'vue-material-design-icons/VideoOff.vue'
-
-import { t } from '@nextcloud/l10n'
-
-import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
-
 import MediaDevicesSelector from '../MediaSettings/MediaDevicesSelector.vue'
+import MediaDevicesSpeakerTest from '../MediaSettings/MediaDevicesSpeakerTest.vue'
 import VolumeIndicator from '../UIShared/VolumeIndicator.vue'
-
 import { useDevices } from '../../composables/useDevices.js'
 import { VIRTUAL_BACKGROUND } from '../../constants.ts'
 import { getTalkConfig } from '../../services/CapabilitiesManager.ts'
@@ -98,6 +101,7 @@ export default {
 	name: 'MediaDevicesPreview',
 
 	components: {
+		MediaDevicesSpeakerTest,
 		AlertCircle,
 		MediaDevicesSelector,
 		MicrophoneOff,
@@ -117,7 +121,9 @@ export default {
 			audioPreviewAvailable,
 			videoPreviewAvailable,
 			audioInputId,
+			audioOutputId,
 			videoInputId,
+			audioOutputSupported,
 			audioStream,
 			audioStreamError,
 			videoStream,
@@ -135,7 +141,9 @@ export default {
 			audioPreviewAvailable,
 			videoPreviewAvailable,
 			audioInputId,
+			audioOutputId,
 			videoInputId,
+			audioOutputSupported,
 			audioStream,
 			audioStreamError,
 			videoStream,
@@ -228,6 +236,11 @@ export default {
 		handleVideoInputIdChange(videoInputId) {
 			this.videoInputId = videoInputId
 			this.updatePreferences('videoinput')
+		},
+
+		handleAudioOutputIdChange(audioOutputId) {
+			this.audioOutputId = audioOutputId
+			this.updatePreferences('audiooutput')
 		},
 
 		async setBlurVirtualBackgroundEnabled(value) {

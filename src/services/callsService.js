@@ -5,7 +5,6 @@
 
 import axios from '@nextcloud/axios'
 import { generateOcsUrl } from '@nextcloud/router'
-
 import { PARTICIPANT } from '../constants.ts'
 import {
 	signalingJoinCall,
@@ -29,10 +28,11 @@ import {
  * @param {boolean} silent Whether the call should trigger a notifications and
  * sound for other participants or not
  * @param {boolean} recordingConsent Whether the participant gave their consent to be recorded
+ * @param {Array<string>} silentFor List of participants that should not receive a notification about the call
  * @return {Promise<number>} The actual flags based on the available media
  */
-const joinCall = async function(token, flags, silent, recordingConsent) {
-	return signalingJoinCall(token, flags, silent, recordingConsent)
+const joinCall = async function(token, flags, silent, recordingConsent, silentFor) {
+	return signalingJoinCall(token, flags, silent, recordingConsent, silentFor)
 }
 
 /**
@@ -129,13 +129,13 @@ const callSIPSendCallMessage = async function(sessionId, data) {
 }
 
 export {
-	joinCall,
-	leaveCall,
-	fetchPeers,
 	callSIPDialOut,
 	callSIPHangupPhone,
-	callSIPMutePhone,
-	callSIPUnmutePhone,
 	callSIPHoldPhone,
+	callSIPMutePhone,
 	callSIPSendDTMF,
+	callSIPUnmutePhone,
+	fetchPeers,
+	joinCall,
+	leaveCall,
 }

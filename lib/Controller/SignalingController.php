@@ -22,6 +22,7 @@ use OCA\Talk\ResponseDefinitions;
 use OCA\Talk\Room;
 use OCA\Talk\Service\BanService;
 use OCA\Talk\Service\ParticipantService;
+use OCA\Talk\Service\RoomService;
 use OCA\Talk\Service\SessionService;
 use OCA\Talk\Signaling\Messages;
 use OCA\Talk\TalkSession;
@@ -29,6 +30,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\BruteForceProtection;
 use OCP\AppFramework\Http\Attribute\OpenAPI;
 use OCP\AppFramework\Http\Attribute\PublicPage;
+use OCP\AppFramework\Http\Attribute\RequestHeader;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -58,6 +60,7 @@ class SignalingController extends OCSController {
 		private TalkSession $session,
 		private Manager $manager,
 		private ParticipantService $participantService,
+		private RoomService $roomService,
 		private SessionService $sessionService,
 		private IDBConnection $dbConnection,
 		private Messages $messages,
@@ -86,12 +89,12 @@ class SignalingController extends OCSController {
 	 * @return bool
 	 */
 	private function validateRecordingBackendRequest(string $data): bool {
-		$random = $this->request->getHeader('Talk-Recording-Random');
+		$random = $this->request->getHeader('talk-recording-random');
 		if (empty($random) || strlen($random) < 32) {
 			$this->logger->debug('Missing random');
 			return false;
 		}
-		$checksum = $this->request->getHeader('Talk-Recording-Checksum');
+		$checksum = $this->request->getHeader('talk-recording-checksum');
 		if (empty($checksum)) {
 			$this->logger->debug('Missing checksum');
 			return false;
@@ -115,10 +118,12 @@ class SignalingController extends OCSController {
 	#[BruteForceProtection(action: 'talkRecordingSecret')]
 	#[BruteForceProtection(action: 'talkFederationAccess')]
 	#[OpenAPI(tags: ['internal_signaling', 'external_signaling'])]
+	#[RequestHeader(name: 'talk-recording-random', description: 'Random seed used to generate the request checksum', indirect: true)]
+	#[RequestHeader(name: 'talk-recording-checksum', description: 'Checksum over the request body to verify authenticity from the recording backend', indirect: true)]
 	public function getSettings(string $token = ''): DataResponse {
 		$isRecordingRequest = false;
 
-		if (!empty($this->request->getHeader('Talk-Recording-Random')) || !empty($this->request->getHeader('Talk-Recording-Checksum'))) {
+		if (!empty($this->request->getHeader('talk-recording-random')) || !empty($this->request->getHeader('talk-recording-checksum'))) {
 			if (!$this->validateRecordingBackendRequest('')) {
 				$response = new DataResponse(null, Http::STATUS_UNAUTHORIZED);
 				$response->throttle(['action' => 'talkRecordingSecret']);
@@ -272,7 +277,7 @@ class SignalingController extends OCSController {
 	 *
 	 * @param int $serverId ID of the signaling server
 	 * @psalm-param non-negative-int $serverId
-	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_NOT_FOUND, null, array{}>|DataResponse<Http::STATUS_INTERNAL_SERVER_ERROR, array{error: string, version?: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{version: string, warning?: string, features?: non-empty-list<string>}, array{}>|DataResponse<Http::STATUS_NOT_FOUND, null, array{}>|DataResponse<Http::STATUS_INTERNAL_SERVER_ERROR, array{error: string, version?: string}, array{}>
 	 *
 	 * 200: Welcome message returned
 	 * 404: Signaling server not found
@@ -649,6 +654,8 @@ class SignalingController extends OCSController {
 	#[OpenAPI(scope: 'backend-signaling')]
 	#[PublicPage]
 	#[BruteForceProtection(action: 'talkSignalingSecret')]
+	#[RequestHeader(name: 'spreed-signaling-random', description: 'Random seed used to generate the request checksum', indirect: true)]
+	#[RequestHeader(name: 'spreed-signaling-checksum', description: 'Checksum over the request body to verify authenticity from the signaling backend', indirect: true)]
 	public function backend(): DataResponse {
 		$json = $this->getInputStream();
 		if (!$this->validateBackendRequest($json)) {
@@ -858,7 +865,9 @@ class SignalingController extends OCSController {
 
 			if ($participant->getSession() instanceof Session) {
 				if ($inCall !== null) {
-					$this->participantService->changeInCall($room, $participant, $inCall);
+					$lastJoinedCall = $this->timeFactory->getDateTime();
+					$this->participantService->changeInCall($room, $participant, $inCall, lastJoinedCall: $lastJoinedCall->getTimestamp());
+					$this->roomService->setActiveSince($room, $participant, $lastJoinedCall, callFlag: $inCall, silent: false);
 				}
 				$this->sessionService->updateLastPing($participant->getSession(), $this->timeFactory->getTime());
 			}

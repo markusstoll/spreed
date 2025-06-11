@@ -8,18 +8,20 @@
 
 import { showError } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
-
 import { CALL, PARTICIPANT, VIRTUAL_BACKGROUND } from './constants.ts'
 import BrowserStorage from './services/BrowserStorage.js'
 import { EventBus } from './services/EventBus.ts'
 import store from './store/index.js'
 import { useIntegrationsStore } from './stores/integrations.js'
+import pinia from './stores/pinia.ts'
 
 import '@nextcloud/dialogs/style.css'
 
 if (!window.OCA.Talk) {
 	window.OCA.Talk = {}
 }
+
+const integrationsStore = useIntegrationsStore(pinia)
 
 /**
  * Frontend message API for adding actions to talk messages.
@@ -37,7 +39,6 @@ window.OCA.Talk.registerMessageAction = ({ label, callback, icon }) => {
 		callback,
 		icon,
 	}
-	const integrationsStore = useIntegrationsStore()
 	integrationsStore.addMessageAction(messageAction)
 }
 
@@ -48,7 +49,6 @@ window.OCA.Talk.registerParticipantSearchAction = ({ label, callback, show, icon
 		show,
 		icon,
 	}
-	const integrationsStore = useIntegrationsStore()
 	integrationsStore.addParticipantSearchAction(participantSearchAction)
 }
 
@@ -87,18 +87,17 @@ const migrateDirectLocalStorageToNextcloudBrowserStorage = () => {
 		return
 	}
 
-	const storageKeys = Array.from(Array(localStorage.length), (_, i) => localStorage.key(i)).filter(key => key.startsWith('audioDisabled_')
+	const storageKeys = Array.from(Array(localStorage.length), (_, i) => localStorage.key(i)).filter((key) => key.startsWith('audioDisabled_')
 		|| key.startsWith('videoDisabled_')
 		|| key.startsWith('virtualBackgroundEnabled_')
 		|| key.startsWith('virtualBackgroundType_')
 		|| key.startsWith('virtualBackgroundBlurStrength_')
-		|| key.startsWith('virtualBackgroundUrl_')
-	)
+		|| key.startsWith('virtualBackgroundUrl_'))
 
 	if (storageKeys.length) {
 		console.debug('Migrating localStorage keys to BrowserStorage', storageKeys)
 
-		storageKeys.forEach(key => {
+		storageKeys.forEach((key) => {
 			BrowserStorage.setItem(key, localStorage.getItem(key))
 			localStorage.removeItem(key)
 

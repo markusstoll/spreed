@@ -4,11 +4,11 @@
 -->
 
 <template>
-	<NcModal :class="{'modal-mask__participants-step': isEditingParticipants}"
+	<NcModal :class="{ 'modal-mask__participants-step': isEditingParticipants }"
 		:label-id="dialogHeaderId"
 		v-on="$listeners">
 		<div class="breakout-rooms-editor"
-			:class="{'breakout-rooms-editor__participants-step': isEditingParticipants}">
+			:class="{ 'breakout-rooms-editor__participants-step': isEditingParticipants }">
 			<h2 :id="dialogHeaderId" class="nc-dialog-alike-header">
 				{{ modalTitle }}
 			</h2>
@@ -75,17 +75,13 @@
 </template>
 
 <script>
-import { ref } from 'vue'
-
 import { t } from '@nextcloud/l10n'
-
+import { ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcInputField from '@nextcloud/vue/components/NcInputField'
 import NcModal from '@nextcloud/vue/components/NcModal'
-
 import BreakoutRoomsParticipantsEditor from './BreakoutRoomsParticipantsEditor.vue'
-
 import { useId } from '../../composables/useId.ts'
 import { useBreakoutRoomsStore } from '../../stores/breakoutRooms.ts'
 

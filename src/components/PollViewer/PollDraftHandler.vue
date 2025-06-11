@@ -38,29 +38,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-
-import IconPoll from 'vue-material-design-icons/Poll.vue'
-
 import { t } from '@nextcloud/l10n'
-
+import { computed } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
-
+import IconPoll from 'vue-material-design-icons/Poll.vue'
 import EmptyView from '../EmptyView.vue'
 import Poll from '../MessagesList/MessagesGroup/Message/MessagePart/Poll.vue'
-
 import { EventBus } from '../../services/EventBus.ts'
 import { usePollsStore } from '../../stores/polls.ts'
 
 const props = defineProps<{
-	token: string,
-	editorOpened?: boolean,
-	container?: string,
+	token: string
+	editorOpened?: boolean
+	container?: string
 }>()
 const emit = defineEmits<{
-	(event: 'close'): void,
+	(event: 'close'): void
 }>()
 
 const pollsStore = usePollsStore()
@@ -77,8 +72,8 @@ const pollDraftsLoaded = computed(() => pollsStore.draftsLoaded(props.token))
  * @param payload.id poll draft ID
  * @param payload.action required action ('fill' from draft or 'edit' draft)
  */
-function openPollEditor({ id, action } : { id: number | null, action?: string }) {
-	EventBus.emit('poll-editor-open', { id, fromDrafts: !props.editorOpened, action, selector: props.container })
+function openPollEditor({ id, action }: { id: number | null, action?: string }) {
+	EventBus.emit('poll-editor-open', { token: props.token, id, fromDrafts: !props.editorOpened, action, selector: props.container })
 }
 </script>
 

@@ -79,6 +79,8 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 	protected static ?string $queryLogFile = null;
 	protected static ?string $currentScenario = null;
 
+	/** @var array<string, string> */
+	protected static array $identifierToObjectId = [];
 
 	protected static array $permissionsMap = [
 		'D' => 0, // PERMISSIONS_DEFAULT
@@ -135,6 +137,10 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 
 	public static function getTeamIdForLabel(string $server, string $label): string {
 		return self::$createdTeams[$server][$label] ?? self::$renamedTeams[$server][$label] ?? throw new \RuntimeException('Unknown team: ' . $label);
+	}
+
+	public static function getRoomLocationForToken(string $identifier): string {
+		return getenv('TEST_SERVER_URL') . '/call/' . self::$identifierToToken[$identifier] ?? throw new \RuntimeException('Unknown token: ' . $identifier);
 	}
 
 	public static function getMessageIdForText(string $text): int {
@@ -385,6 +391,13 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 		Assert::assertCount(count($formData->getHash()), $rooms, 'Room count does not match');
 
 		$expected = $formData->getHash();
+
+		$count = count($expected);
+		for ($i = 0; $i < $count; $i++) {
+			if (isset($expected[$i]['objectId']) && preg_match('/OBJECT_ID\(([^)]+)\)/', $expected[$i]['objectId'], $matches)) {
+				$expected[$i]['objectId'] = self::$identifierToObjectId[$matches[1]];
+			}
+		}
 		if ($shouldOrder) {
 			$sorter = static function (array $roomA, array $roomB): int {
 				if (str_starts_with($roomA['name'], '/')) {
@@ -428,141 +441,150 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 			usort($expected, $sorter);
 		}
 
-		Assert::assertEquals($expected, array_map(function (array $room, array $expectedRoom): array {
-			if (!isset(self::$identifierToToken[$room['name']])) {
-				self::$identifierToToken[$room['name']] = $room['token'];
-			}
-			if (!isset(self::$tokenToIdentifier[$room['token']])) {
-				self::$tokenToIdentifier[$room['token']] = $room['name'];
-			}
+		Assert::assertEquals($expected,
+			array_map(function (array $room, array $expectedRoom): array {
+				if (!isset(self::$identifierToToken[$room['name']])) {
+					self::$identifierToToken[$room['name']] = $room['token'];
+				}
+				if (!isset(self::$tokenToIdentifier[$room['token']])) {
+					self::$tokenToIdentifier[$room['token']] = $room['name'];
+				}
 
-			$data = [];
-			if (isset($expectedRoom['id'])) {
-				$data['id'] = self::$tokenToIdentifier[$room['token']];
-			}
-			if (isset($expectedRoom['name'])) {
-				$data['name'] = $room['name'];
+				$data = [];
+				if (isset($expectedRoom['id'])) {
+					$data['id'] = self::$tokenToIdentifier[$room['token']];
+				}
+				if (isset($expectedRoom['name'])) {
+					$data['name'] = $room['name'];
 
-				// Breakout room regex
-				if (str_starts_with($expectedRoom['name'], '/') && preg_match($expectedRoom['name'], $room['name'])) {
-					$data['name'] = $expectedRoom['name'];
+					// Breakout room regex
+					if (str_starts_with($expectedRoom['name'], '/') && preg_match($expectedRoom['name'], $room['name'])) {
+						$data['name'] = $expectedRoom['name'];
+					}
 				}
-			}
-			if (isset($expectedRoom['description'])) {
-				$data['description'] = $room['description'];
-			}
-			if (isset($expectedRoom['type'])) {
-				$data['type'] = (string)$room['type'];
-			}
-			if (isset($expectedRoom['remoteServer'])) {
-				$data['remoteServer'] = isset($room['remoteServer']) ? self::translateRemoteServer($room['remoteServer']) : '';
-			}
-			if (isset($expectedRoom['remoteToken'])) {
-				if (isset($room['remoteToken'])) {
-					$data['remoteToken'] = self::$tokenToIdentifier[$room['remoteToken']] ?? 'unknown-token';
-				} else {
-					$data['remoteToken'] = '';
+				if (isset($expectedRoom['description'])) {
+					$data['description'] = $room['description'];
 				}
-			}
-			if (isset($expectedRoom['hasPassword'])) {
-				$data['hasPassword'] = (string)$room['hasPassword'];
-			}
-			if (isset($expectedRoom['readOnly'])) {
-				$data['readOnly'] = (string)$room['readOnly'];
-			}
-			if (isset($expectedRoom['listable'])) {
-				$data['listable'] = (string)$room['listable'];
-			}
-			if (isset($expectedRoom['isArchived'])) {
-				$data['isArchived'] = (int)$room['isArchived'];
-			}
-			if (isset($expectedRoom['participantType'])) {
-				$data['participantType'] = (string)$room['participantType'];
-			}
-			if (isset($expectedRoom['sipEnabled'])) {
-				$data['sipEnabled'] = (string)$room['sipEnabled'];
-			}
-			if (isset($expectedRoom['callFlag'])) {
-				$data['callFlag'] = (int)$room['callFlag'];
-			}
-			if (isset($expectedRoom['lobbyState'])) {
-				$data['lobbyState'] = (int)$room['lobbyState'];
-			}
-			if (!empty($expectedRoom['lobbyTimer'])) {
-				$data['lobbyTimer'] = (int)$room['lobbyTimer'];
-			}
-			if (isset($expectedRoom['lobbyTimer'])) {
-				$data['lobbyTimer'] = (int)$room['lobbyTimer'];
-				if ($expectedRoom['lobbyTimer'] === 'GREATER_THAN_ZERO' && $room['lobbyTimer'] > 0) {
-					$data['lobbyTimer'] = 'GREATER_THAN_ZERO';
+				if (isset($expectedRoom['type'])) {
+					$data['type'] = (string)$room['type'];
 				}
-			}
-			if (isset($expectedRoom['breakoutRoomMode'])) {
-				$data['breakoutRoomMode'] = (int)$room['breakoutRoomMode'];
-			}
-			if (isset($expectedRoom['breakoutRoomStatus'])) {
-				$data['breakoutRoomStatus'] = (int)$room['breakoutRoomStatus'];
-			}
-			if (isset($expectedRoom['attendeePin'])) {
-				$data['attendeePin'] = $room['attendeePin'] ? '**PIN**' : '';
-			}
-			if (isset($expectedRoom['lastMessage'])) {
-				if (isset($room['lastMessage'])) {
-					$data['lastMessage'] = $room['lastMessage'] ? $room['lastMessage']['message'] : '';
-				} else {
-					$data['lastMessage'] = 'UNSET';
+				if (isset($expectedRoom['remoteServer'])) {
+					$data['remoteServer'] = isset($room['remoteServer']) ? self::translateRemoteServer($room['remoteServer']) : '';
 				}
-			}
-			if (isset($expectedRoom['lastMessageActorType'])) {
-				$data['lastMessageActorType'] = $room['lastMessage'] ? $room['lastMessage']['actorType'] : '';
-			}
-			if (isset($expectedRoom['lastMessageActorId'])) {
-				$data['lastMessageActorId'] = $room['lastMessage'] ? $room['lastMessage']['actorId'] : '';
-				$data['lastMessageActorId'] = str_replace(rtrim($this->localServerUrl, '/'), '{$LOCAL_URL}', $data['lastMessageActorId']);
-				$data['lastMessageActorId'] = str_replace(rtrim($this->remoteServerUrl, '/'), '{$REMOTE_URL}', $data['lastMessageActorId']);
-			}
-			if (isset($expectedRoom['lastReadMessage'])) {
-				$data['lastReadMessage'] = self::$messageIdToText[(int)$room['lastReadMessage']] ?? ($room['lastReadMessage'] === -2 ? 'FIRST_MESSAGE_UNREAD': 'UNKNOWN_MESSAGE');
-			}
-			if (isset($expectedRoom['unreadMessages'])) {
-				$data['unreadMessages'] = (int)$room['unreadMessages'];
-			}
-			if (isset($expectedRoom['unreadMention'])) {
-				$data['unreadMention'] = (int)$room['unreadMention'];
-			}
-			if (isset($expectedRoom['unreadMentionDirect'])) {
-				$data['unreadMentionDirect'] = (int)$room['unreadMentionDirect'];
-			}
-			if (isset($expectedRoom['messageExpiration'])) {
-				$data['messageExpiration'] = (int)$room['messageExpiration'];
-			}
-			if (isset($expectedRoom['callRecording'])) {
-				$data['callRecording'] = (int)$room['callRecording'];
-			}
-			if (isset($expectedRoom['recordingConsent'])) {
-				$data['recordingConsent'] = (int)$room['recordingConsent'];
-			}
-			if (isset($expectedRoom['permissions'])) {
-				$data['permissions'] = $this->mapPermissionsAPIOutput($room['permissions']);
-			}
-			if (isset($expectedRoom['attendeePermissions'])) {
-				$data['attendeePermissions'] = $this->mapPermissionsAPIOutput($room['attendeePermissions']);
-			}
-			if (isset($expectedRoom['callPermissions'])) {
-				$data['callPermissions'] = $this->mapPermissionsAPIOutput($room['callPermissions']);
-			}
-			if (isset($expectedRoom['defaultPermissions'])) {
-				$data['defaultPermissions'] = $this->mapPermissionsAPIOutput($room['defaultPermissions']);
-			}
-			if (isset($expectedRoom['mentionPermissions'])) {
-				$data['mentionPermissions'] = (int)$room['mentionPermissions'];
-			}
-			if (isset($expectedRoom['participants'])) {
-				throw new \Exception('participants key needs to be checked via participants endpoint');
-			}
-
-			return $data;
-		}, $rooms, $expected));
+				if (isset($expectedRoom['remoteToken'])) {
+					if (isset($room['remoteToken'])) {
+						$data['remoteToken'] = self::$tokenToIdentifier[$room['remoteToken']] ?? 'unknown-token';
+					} else {
+						$data['remoteToken'] = '';
+					}
+				}
+				if (isset($expectedRoom['hasPassword'])) {
+					$data['hasPassword'] = (string)$room['hasPassword'];
+				}
+				if (isset($expectedRoom['readOnly'])) {
+					$data['readOnly'] = (string)$room['readOnly'];
+				}
+				if (isset($expectedRoom['listable'])) {
+					$data['listable'] = (string)$room['listable'];
+				}
+				if (isset($expectedRoom['isArchived'])) {
+					$data['isArchived'] = (int)$room['isArchived'];
+				}
+				if (isset($expectedRoom['isSensitive'])) {
+					$data['isSensitive'] = (int)$room['isSensitive'];
+				}
+				if (isset($expectedRoom['participantType'])) {
+					$data['participantType'] = (string)$room['participantType'];
+				}
+				if (isset($expectedRoom['sipEnabled'])) {
+					$data['sipEnabled'] = (string)$room['sipEnabled'];
+				}
+				if (isset($expectedRoom['callFlag'])) {
+					$data['callFlag'] = (int)$room['callFlag'];
+				}
+				if (isset($expectedRoom['lobbyState'])) {
+					$data['lobbyState'] = (int)$room['lobbyState'];
+				}
+				if (!empty($expectedRoom['lobbyTimer'])) {
+					$data['lobbyTimer'] = (int)$room['lobbyTimer'];
+				}
+				if (isset($expectedRoom['lobbyTimer'])) {
+					$data['lobbyTimer'] = (int)$room['lobbyTimer'];
+					if ($expectedRoom['lobbyTimer'] === 'GREATER_THAN_ZERO' && $room['lobbyTimer'] > 0) {
+						$data['lobbyTimer'] = 'GREATER_THAN_ZERO';
+					}
+				}
+				if (isset($expectedRoom['breakoutRoomMode'])) {
+					$data['breakoutRoomMode'] = (int)$room['breakoutRoomMode'];
+				}
+				if (isset($expectedRoom['breakoutRoomStatus'])) {
+					$data['breakoutRoomStatus'] = (int)$room['breakoutRoomStatus'];
+				}
+				if (isset($expectedRoom['attendeePin'])) {
+					$data['attendeePin'] = $room['attendeePin'] ? '**PIN**' : '';
+				}
+				if (isset($expectedRoom['lastMessage'])) {
+					if (isset($room['lastMessage'])) {
+						$data['lastMessage'] = $room['lastMessage'] ? $room['lastMessage']['message'] : '';
+					} else {
+						$data['lastMessage'] = 'UNSET';
+					}
+				}
+				if (isset($expectedRoom['lastMessageActorType'])) {
+					$data['lastMessageActorType'] = $room['lastMessage'] ? $room['lastMessage']['actorType'] : '';
+				}
+				if (isset($expectedRoom['lastMessageActorId'])) {
+					$data['lastMessageActorId'] = $room['lastMessage'] ? $room['lastMessage']['actorId'] : '';
+					$data['lastMessageActorId'] = str_replace(rtrim($this->localServerUrl, '/'), '{$LOCAL_URL}', $data['lastMessageActorId']);
+					$data['lastMessageActorId'] = str_replace(rtrim($this->remoteServerUrl, '/'), '{$REMOTE_URL}', $data['lastMessageActorId']);
+				}
+				if (isset($expectedRoom['lastReadMessage'])) {
+					$data['lastReadMessage'] = self::$messageIdToText[(int)$room['lastReadMessage']] ?? ($room['lastReadMessage'] === -2 ? 'FIRST_MESSAGE_UNREAD': 'UNKNOWN_MESSAGE');
+				}
+				if (isset($expectedRoom['unreadMessages'])) {
+					$data['unreadMessages'] = (int)$room['unreadMessages'];
+				}
+				if (isset($expectedRoom['unreadMention'])) {
+					$data['unreadMention'] = (int)$room['unreadMention'];
+				}
+				if (isset($expectedRoom['unreadMentionDirect'])) {
+					$data['unreadMentionDirect'] = (int)$room['unreadMentionDirect'];
+				}
+				if (isset($expectedRoom['messageExpiration'])) {
+					$data['messageExpiration'] = (int)$room['messageExpiration'];
+				}
+				if (isset($expectedRoom['callRecording'])) {
+					$data['callRecording'] = (int)$room['callRecording'];
+				}
+				if (isset($expectedRoom['recordingConsent'])) {
+					$data['recordingConsent'] = (int)$room['recordingConsent'];
+				}
+				if (isset($expectedRoom['permissions'])) {
+					$data['permissions'] = $this->mapPermissionsAPIOutput($room['permissions']);
+				}
+				if (isset($expectedRoom['attendeePermissions'])) {
+					$data['attendeePermissions'] = $this->mapPermissionsAPIOutput($room['attendeePermissions']);
+				}
+				if (isset($expectedRoom['callPermissions'])) {
+					$data['callPermissions'] = $this->mapPermissionsAPIOutput($room['callPermissions']);
+				}
+				if (isset($expectedRoom['defaultPermissions'])) {
+					$data['defaultPermissions'] = $this->mapPermissionsAPIOutput($room['defaultPermissions']);
+				}
+				if (isset($expectedRoom['mentionPermissions'])) {
+					$data['mentionPermissions'] = (int)$room['mentionPermissions'];
+				}
+				if (isset($expectedRoom['participants'])) {
+					throw new \Exception('participants key needs to be checked via participants endpoint');
+				}
+				if (isset($expectedRoom['objectId'])) {
+					$data['objectId'] = $room['objectId'];
+				}
+				if (isset($expectedRoom['objectType'])) {
+					$data['objectType'] = $room['objectType'];
+				}
+				return $data;
+			}, $rooms, $expected));
 	}
 
 	#[Then('/^user "([^"]*)" has the following invitations \((v1)\)$/')]
@@ -1044,13 +1066,18 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 			$body['roomName'] = $identifier;
 		}
 
-		if (isset($body['objectType'], $body['objectId']) && $body['objectType'] === 'room') {
+		if (isset($body['objectType'], $body['objectId']) && in_array($body['objectType'], ['room', 'extended_conversation'], true)) {
 			$result = preg_match('/ROOM\(([^)]+)\)/', $body['objectId'], $matches);
 			if ($result && isset(self::$identifierToToken[$matches[1]])) {
 				$body['objectId'] = self::$identifierToToken[$matches[1]];
 			} elseif ($result) {
 				throw new \InvalidArgumentException('Could not find parent room');
 			}
+		}
+
+		if (isset($body['objectType']) && $body['objectType'] === 'event') {
+			[$start, $end] = explode('#', $body['objectId']);
+			$body['objectId'] = (time() + (int)$start) . '#' . (time() + (int)$end);
 		}
 
 		if (isset($body['permissions'])) {
@@ -1956,6 +1983,28 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 			'/apps/spreed/api/' . $apiVersion . '/chat/' . self::$identifierToToken[$identifier] . '/' . self::$textToMessageId[$message] . '/reminder'
 		);
 		$this->assertStatusCode($this->response, $statusCode);
+	}
+
+	#[Then('/^user "([^"]*)" gets upcoming reminders \((v1)\)$/')]
+	public function userGetsUpcomingReminders(string $user, string $apiVersion, ?TableNode $table = null): void {
+
+		$this->setCurrentUser($user);
+		$this->sendRequest('GET', '/apps/spreed/api/' . $apiVersion . '/chat/upcoming-reminders');
+		$this->assertStatusCode($this->response, 200);
+
+		$actual = $this->getDataFromResponse($this->response);
+		var_dump($actual);
+		if ($table === null) {
+			Assert::assertEmpty($actual);
+			return;
+		}
+
+		Assert::assertEquals(array_map(function (array $expected): array {
+			$expected['messageId'] = self::$textToMessageId[$expected['messageId']];
+			$expected['roomToken'] = self::$identifierToToken[$expected['roomToken']];
+			$expected['messageParameters'] = json_decode($expected['messageParameters']);
+			return $expected;
+		}, $table->getHash()), $actual);
 	}
 
 	#[Then('/^user "([^"]*)" shares rich-object "([^"]*)" "([^"]*)" \'([^\']*)\' to room "([^"]*)" with (\d+)(?: \((v1)\))?$/')]
@@ -3432,6 +3481,20 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 		}
 	}
 
+	#[Given('/^user "([^"]*)" exists and has an email address$/')]
+	public function assureUserExistsAndHasEmail(string $user): void {
+		$response = $this->userExists($user);
+		if ($response->getStatusCode() !== 200) {
+			$this->createUser($user);
+			// Set a display name different than the user ID to be able to
+			// ensure in the tests that the right value was returned.
+			$this->setUserDisplayName($user);
+			$response = $this->userExists($user);
+			$this->assertStatusCode($response, 200);
+		}
+		$this->setUserEmail($user);
+	}
+
 	#[Given('/^(enable|disable) brute force protection$/')]
 	public function enableDisableBruteForceProtection(string $enable): void {
 		if ($enable === 'enable') {
@@ -3632,6 +3695,15 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 		$this->sendRequest('PUT', '/cloud/users/' . $user, [
 			'key' => 'displayname',
 			'value' => $user . '-displayname'
+		]);
+		$this->setCurrentUser($currentUser);
+	}
+
+	private function setUserEmail(string $user): void {
+		$currentUser = $this->setCurrentUser('admin');
+		$this->sendRequest('PUT', '/cloud/users/' . $user, [
+			'key' => 'email',
+			'value' => $user . '@example.tld'
 		]);
 		$this->setCurrentUser($currentUser);
 	}
@@ -4303,6 +4375,21 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 		$this->assertStatusCode($this->response, $statusCode);
 	}
 
+	#[When('/^user "([^"]*)" marks room "([^"]*)" as (sensitive|insensitive) with (\d+) \((v4)\)$/')]
+	public function userMarksConversationSensitive(string $user, string $identifier, string $action, int $statusCode, string $apiVersion): void {
+		$httpMethod = 'POST';
+
+		if ($action === 'insensitive') {
+			$httpMethod = 'DELETE';
+		}
+
+		$this->setCurrentUser($user);
+		$this->sendRequest(
+			$httpMethod, '/apps/spreed/api/' . $apiVersion . '/room/' . self::$identifierToToken[$identifier] . '/sensitive',
+		);
+		$this->assertStatusCode($this->response, $statusCode);
+	}
+
 	public function sendRequestFullUrl(string $verb, string $fullUrl, TableNode|array|string|null $body = null, array $headers = [], array $options = []): void {
 		$client = new Client();
 		$options = array_merge($options, ['cookies' => $this->getUserCookieJar($this->currentUser)]);
@@ -4352,5 +4439,124 @@ class FeatureContext implements Context, SnippetAcceptingContext {
 		} else {
 			Assert::assertEquals($statusCode, $response->getStatusCode(), $message);
 		}
+	}
+
+	#[Given('/^age room "([^"]+)" (\d+) (hours|days)$/')]
+	public function ageRoomForRetentionAndExpiration(string $identifier, int $time, string $unit): void {
+		$this->setCurrentUser('admin');
+		if ($unit === 'days') {
+			$time *= 24;
+		}
+
+		$this->sendRequest('POST', '/apps/spreedcheats/age', [
+			'token' => self::$identifierToToken[$identifier],
+			'hours' => $time,
+		]);
+
+		var_dump($this->response->getBody()->getContents());
+		$this->assertStatusCode($this->response, 200);
+	}
+
+	#[Given('/^user "([^"]*)" creates calendar events for a room "([^"]*)" \((v4)\)$/')]
+	public function createCalendarEntriesWithRoom(string $user, string $identifier, string $apiVersion = 'v1', ?TableNode $formData = null): void {
+		$this->setCurrentUser($user);
+
+		$body = $formData->getRowsHash();
+		$body['roomName'] = $identifier;
+		if (!isset(self::$tokenToIdentifier[$identifier])) {
+			$this->sendRequest('POST', '/apps/spreed/api/' . $apiVersion . '/room', $body);
+			$this->assertStatusCode($this->response, 201);
+			$response = $this->getDataFromResponse($this->response);
+
+			self::$identifierToToken[$identifier] = $response['token'];
+			self::$identifierToId[$identifier] = $response['id'];
+			self::$tokenToIdentifier[$response['token']] = $identifier;
+		}
+
+		$location = self::getRoomLocationForToken($identifier);
+		$this->sendRequest('POST', '/apps/spreedcheats/dashboardEvents', [
+			'name' => $identifier,
+			'location' => $location,
+		]);
+
+		$this->assertStatusCode($this->response, 200);
+	}
+
+	#[Given('/^user "([^"]*)" creates calendar events inviting user "([^"]*)" \((v4)\)$/')]
+	public function createEventsForOneToOne(string $user, string $participant, string $apiVersion = 'v1', ?TableNode $formData = null): void {
+		$this->setCurrentUser($user);
+		$this->sendRequest('POST', '/apps/spreedcheats/mutualEvents', [
+			'organizer' => $user,
+			'attendee' => $participant,
+		]);
+
+		$this->assertStatusCode($this->response, 200);
+	}
+
+	#[Then('/^user "([^"]*)" sees the following entry when loading the dashboard conversations \((v4)\)$/')]
+	public function userGetsEventConversationsForTalkDashboard(string $user, string $apiVersion, ?TableNode $formData = null): void {
+		$this->setCurrentUser($user);
+		$this->sendRequest('GET', '/apps/spreed/api/' . $apiVersion . '/dashboard/events');
+		$this->assertStatusCode($this->response, 200);
+
+		$data = $this->getDataFromResponse($this->response);
+		if (!$formData instanceof TableNode) {
+			Assert::assertEmpty($data);
+			return;
+		}
+
+		$this->assertDashboardData($data, $formData);
+	}
+
+	#[Then('/^user "([^"]*)" sees the following entry when loading mutual events in room "([^"]*)" \((v4)\)$/')]
+	public function userGetsMutualEventConversations(string $user, string $identifier, string $apiVersion, ?TableNode $formData = null): void {
+		$this->setCurrentUser($user);
+		$token = self::$identifierToToken[$identifier];
+		$this->sendRequest('GET', '/apps/spreed/api/' . $apiVersion . '/room/' . $token . '/mutual-events');
+		$this->assertStatusCode($this->response, 200);
+
+		$data = $this->getDataFromResponse($this->response);
+		if (!$formData instanceof TableNode) {
+			Assert::assertEmpty($data);
+			return;
+		}
+
+		$this->assertDashboardData($data, $formData);
+	}
+
+
+	/**
+	 * @param array $dashboardEvents
+	 * @param TableNode $formData
+	 */
+	private function assertDashboardData(array $dashboardEvents, TableNode $formData) : void {
+		Assert::assertCount(count($formData->getHash()), $dashboardEvents, 'Event count does not match');
+
+		$expected = $formData->getHash();
+
+		if (empty($expected)) {
+			return;
+		}
+
+		$missingKeys = array_diff(array_keys($dashboardEvents[0]), array_keys($expected[0]));
+		Assert::assertEquals(array_map(function ($event) {
+			foreach ($event as $key => $value) {
+				if ($value === 'null') {
+					$event[$key] = null;
+				}
+			}
+			$event['roomType'] = (int)$event['roomType'];
+			$event['eventAttachments'] = (int)$event['eventAttachments'];
+			$event['calendars'] = (int)$event['calendars'];
+			return $event;
+		}, $expected), array_map(static function (array $event) use ($missingKeys): array {
+			$data = $event;
+			foreach ($missingKeys as $key) {
+				unset($data[$key]);
+			}
+			$data['eventAttachments'] = count($event['eventAttachments']);
+			$data['calendars'] = count($event['calendars']);
+			return $data;
+		}, $dashboardEvents));
 	}
 }

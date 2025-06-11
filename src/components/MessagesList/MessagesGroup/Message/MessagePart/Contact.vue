@@ -10,8 +10,8 @@
 		target="_blank">
 		<img v-if="contactPhotoFromBase64"
 			:class="{
-				'contact__image': contactHasPhoto,
-				'contact__icon': !contactHasPhoto,
+				contact__image: contactHasPhoto,
+				contact__icon: !contactHasPhoto,
 			}"
 			alt=""
 			:src="contactPhotoFromBase64">
@@ -60,15 +60,18 @@ export default {
 		contactHasPhoto() {
 			return this.contactPhotoMimetype && this.contactPhoto
 		},
+
 		contactPhotoFromBase64() {
 			if (!this.contactHasPhoto) {
 				return OC.MimeType.getIconUrl('text/vcard')
 			}
 			return 'data:' + this.contactPhotoMimetype + ';base64,' + this.contactPhoto
 		},
+
 		displayName() {
 			return this.contactName || this.name
 		},
+
 		contactAriaLabel() {
 			return t('spreed', 'Contact')
 		},

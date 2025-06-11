@@ -4,19 +4,14 @@
 -->
 
 <script setup lang="ts">
-import { computed, onBeforeMount, provide, ref, watch } from 'vue'
-
-import IconAccountPlus from 'vue-material-design-icons/AccountPlus.vue'
-import IconAccountSearch from 'vue-material-design-icons/AccountSearch.vue'
-import IconCalendarBlank from 'vue-material-design-icons/CalendarBlank.vue'
-import IconCheck from 'vue-material-design-icons/Check.vue'
-import IconPlus from 'vue-material-design-icons/Plus.vue'
-import IconReload from 'vue-material-design-icons/Reload.vue'
+import type { Conversation, Participant } from '../types/index.ts'
 
 import { showSuccess } from '@nextcloud/dialogs'
-import { t, n } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import moment from '@nextcloud/moment'
-
+import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
+import usernameToColor from '@nextcloud/vue/functions/usernameToColor'
+import { computed, onBeforeMount, provide, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcDateTimePickerNative from '@nextcloud/vue/components/NcDateTimePickerNative'
@@ -27,28 +22,30 @@ import NcPopover from '@nextcloud/vue/components/NcPopover'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
-import usernameToColor from '@nextcloud/vue/functions/usernameToColor'
-
+import IconAccountPlus from 'vue-material-design-icons/AccountPlus.vue'
+import IconAccountSearch from 'vue-material-design-icons/AccountSearch.vue'
+import IconCalendarBlank from 'vue-material-design-icons/CalendarBlank.vue'
+import IconCheck from 'vue-material-design-icons/Check.vue'
+import IconPlus from 'vue-material-design-icons/Plus.vue'
+import IconReload from 'vue-material-design-icons/Reload.vue'
 import SelectableParticipant from './BreakoutRoomsEditor/SelectableParticipant.vue'
+import CalendarEventSmall from './UIShared/CalendarEventSmall.vue'
 import ContactSelectionBubble from './UIShared/ContactSelectionBubble.vue'
 import SearchBox from './UIShared/SearchBox.vue'
 import TransitionWrapper from './UIShared/TransitionWrapper.vue'
-
 import { useStore } from '../composables/useStore.js'
 import { ATTENDEE, CONVERSATION } from '../constants.ts'
 import { hasTalkFeature } from '../services/CapabilitiesManager.ts'
 import { useGroupwareStore } from '../stores/groupware.ts'
-import type { Conversation, Participant } from '../types/index.ts'
 import { convertToUnix } from '../utils/formattedTime.ts'
 import { getDisplayNameWithFallback } from '../utils/getDisplayName.ts'
 
 const props = defineProps<{
-	token: string,
-	container?: string,
+	token: string
+	container?: string
 }>()
 const emit = defineEmits<{
-	(event: 'close'): void,
+	(event: 'close'): void
 }>()
 
 const hideTriggers = (triggers: string[]) => [...triggers, 'click']
@@ -70,7 +67,7 @@ const upcomingEvents = computed(() => {
 	const now = convertToUnix(Date.now())
 	return groupwareStore.getAllEvents(props.token)
 		.sort((a, b) => (a.start && b.start) ? (a.start - b.start) : 0)
-		.map(event => {
+		.map((event) => {
 			const start = event.start
 				? (event.start <= now) ? t('spreed', 'Now') : moment(event.start * 1000).calendar()
 				: ''
@@ -81,13 +78,14 @@ const upcomingEvents = computed(() => {
 })
 
 type CalendarOption = { value: string, label: string, color: string }
-const calendarOptions = computed<CalendarOption[]>(() => groupwareStore.writeableCalendars.map(calendar => ({
+const calendarOptions = computed<CalendarOption[]>(() => groupwareStore.writeableCalendars.map((calendar) => ({
 	value: calendar.uri,
 	label: calendar.displayname,
-	color: calendar.color ?? usernameToColor(calendar.uri).color
+	color: calendar.color ?? usernameToColor(calendar.uri).color,
 })))
 const canScheduleMeeting = computed(() => {
 	return hasTalkFeature(props.token, 'schedule-meeting') && store.getters.isModerator && calendarOptions.value.length !== 0
+		&& conversation.value.type !== CONVERSATION.TYPE.ONE_TO_ONE_FORMER
 })
 
 const selectedCalendar = ref<CalendarOption | null>(null)
@@ -98,17 +96,17 @@ const newMeetingDescription = ref('')
 const invalid = ref<string | null>(null)
 const invalidHint = computed(() => {
 	switch (invalid.value) {
-	case null:
-		return ''
-	case 'calendar':
-		return t('spreed', 'Invalid calendar selected')
-	case 'start':
-		return t('spreed', 'Invalid start time selected')
-	case 'end':
-		return t('spreed', 'Invalid end time selected')
-	case 'unknown':
-	default:
-		return t('spreed', 'Unknown error occurred')
+		case null:
+			return ''
+		case 'calendar':
+			return t('spreed', 'Invalid calendar selected')
+		case 'start':
+			return t('spreed', 'Invalid start time selected')
+		case 'end':
+			return t('spreed', 'Invalid end time selected')
+		case 'unknown':
+		default:
+			return t('spreed', 'Unknown error occurred')
 	}
 })
 
@@ -121,37 +119,33 @@ const attendeeHint = computed(() => {
 
 	const list: Participant[] = selectedParticipants.value.slice(0, 2)
 	const remainingCount = selectedParticipants.value.length - list.length
-	const summary = list.map(participant => getDisplayNameWithFallback(participant.displayName, participant.actorType))
+	const summary = list.map((participant) => getDisplayNameWithFallback(participant.displayName, participant.actorType))
 
 	if (remainingCount === 0) {
 		// Amount is 2 or less
 		switch (summary.length) {
-		case 1: {
-			return t('spreed', '{participant0} will receive an invitation', { participant0: summary[0] },
-				undefined, {
+			case 1: {
+				return t('spreed', '{participant0} will receive an invitation', { participant0: summary[0] }, undefined, {
 					escape: false,
 					sanitize: false,
 				})
-		}
-		case 2: {
-			return t('spreed', '{participant0} and {participant1} will receive invitations',
-				{ participant0: summary[0], participant1: summary[1] }, undefined, {
+			}
+			case 2: {
+				return t('spreed', '{participant0} and {participant1} will receive invitations', { participant0: summary[0], participant1: summary[1] }, undefined, {
 					escape: false,
 					sanitize: false,
 				})
-		}
-		case 0:
-		default: {
-			return ''
-		}
+			}
+			case 0:
+			default: {
+				return ''
+			}
 		}
 	} else {
-		return n('spreed', '{participant0}, {participant1} and %n other will receive invitations',
-			'{participant0}, {participant1} and %n others will receive invitations', remainingCount,
-			{ participant0: summary[0], participant1: summary[1] }, {
-				escape: false,
-				sanitize: false,
-			})
+		return n('spreed', '{participant0}, {participant1} and %n other will receive invitations', '{participant0}, {participant1} and %n others will receive invitations', remainingCount, { participant0: summary[0], participant1: summary[1] }, {
+			escape: false,
+			sanitize: false,
+		})
 	}
 })
 
@@ -160,6 +154,11 @@ const isMatch = (string: string = '') => string.toLowerCase().includes(searchTex
 
 const conversation = computed<Conversation>(() => store.getters.conversation(props.token))
 const participants = computed(() => {
+	if (isOneToOneConversation.value && store.getters.participantsList(props.token).length === 1) {
+		// Second participant is not yet added to conversation, need to fake data from conversation object
+		// We do not have an attendeeId, so 'attendeeIds' in payload should be 'null' (selectAll === true)
+		return [{ id: conversation.value.name, source: ATTENDEE.ACTOR_TYPE.USERS, displayName: conversation.value.displayName }]
+	}
 	return store.getters.participantsList(props.token).filter((participant: Participant) => {
 		return [ATTENDEE.ACTOR_TYPE.USERS, ATTENDEE.ACTOR_TYPE.EMAILS].includes(participant.actorType)
 			&& participant.attendeeId !== conversation.value.attendeeId
@@ -183,8 +182,7 @@ const selectedParticipants = computed(() => participants.value
 			return a.displayName ? -1 : 1
 		}
 		return 0
-	})
-)
+	}))
 
 const isOneToOneConversation = computed(() => {
 	return conversation.value.type === CONVERSATION.TYPE.ONE_TO_ONE
@@ -207,7 +205,7 @@ watch(isFormOpen, (value) => {
 	}
 
 	// Reset the default form values
-	selectedCalendar.value = calendarOptions.value.find(o => o.value === groupwareStore.defaultCalendarUri) ?? null
+	selectedCalendar.value = calendarOptions.value.find((o) => o.value === groupwareStore.defaultCalendarUri) ?? null
 	selectedDateTimeStart.value = getCurrentDateInStartOfNthHour(1)
 	selectedDateTimeEnd.value = getCurrentDateInStartOfNthHour(2)
 	newMeetingTitle.value = ''
@@ -251,7 +249,7 @@ function toggleAll(value: boolean) {
  * @param value switch value
  */
 function removeSelectedParticipant(value: Participant) {
-	selectedAttendeeIds.value = selectedAttendeeIds.value.filter(id => value.attendeeId !== id)
+	selectedAttendeeIds.value = selectedAttendeeIds.value.filter((id) => value.attendeeId !== id)
 }
 
 /**
@@ -333,24 +331,13 @@ async function submitNewMeeting() {
 			<template #default>
 				<template v-if="!loading && upcomingEvents.length">
 					<ul class="calendar-events__list">
-						<!-- Upcoming event -->
-						<li v-for="event in upcomingEvents" :key="event.uri">
-							<a class="calendar-events__item"
-								:class="{ 'calendar-events__item--thumb': !event.href }"
-								:href="event.href"
-								:title="t('spreed', 'Open Calendar')"
-								:tabindex="0"
-								target="_blank">
-								<span class="calendar-badge" :style="{ backgroundColor: event.color }" />
-								<span class="calendar-events__content">
-									<span class="calendar-events__header">
-										<span class="calendar-events__header-text">{{ event.summary }}</span>
-										<IconReload v-if="event.recurrenceId" :size="13" />
-									</span>
-									<span>{{ event.start }}</span>
-								</span>
-							</a>
-						</li>
+						<CalendarEventSmall v-for="event in upcomingEvents"
+							:key="event.uri"
+							:name="event.summary"
+							:start="event.start"
+							:href="event.href"
+							:color="event.color"
+							:is-recurring="!!event.recurrenceId" />
 					</ul>
 				</template>
 				<NcEmptyContent v-else class="calendar-events__empty-content">
@@ -360,7 +347,7 @@ async function submitNewMeeting() {
 					</template>
 
 					<template #description>
-						<p>{{ loading ? t('spreed', 'Loading …') : t('spreed', 'No upcoming events') }}</p>
+						<p>{{ loading ? t('spreed', 'Loading …') : t('spreed', 'No upcoming meetings') }}</p>
 					</template>
 				</NcEmptyContent>
 				<div v-if="canScheduleMeeting" class="calendar-events__buttons">
@@ -489,7 +476,7 @@ async function submitNewMeeting() {
 				</ul>
 				<NcEmptyContent v-else
 					class="calendar-meeting__empty-content"
-					:name="!participantsInitialised ? t('spreed', 'Loading …') :t('spreed', 'No results')">
+					:name="!participantsInitialised ? t('spreed', 'Loading …') : t('spreed', 'No results')">
 					<template #icon>
 						<NcLoadingIcon v-if="!participantsInitialised" />
 						<IconAccountSearch v-else />
@@ -517,6 +504,7 @@ async function submitNewMeeting() {
 		margin: calc(var(--default-grid-baseline) / 2);
 		line-height: 20px;
 		max-height: calc(4.5 * var(--item-height) + 4 * var(--default-grid-baseline));
+		max-width: 200px;
 		overflow-y: auto;
 
 		& > * {
@@ -525,49 +513,6 @@ async function submitNewMeeting() {
 			&:not(:last-child) {
 				border-bottom: 1px solid var(--color-border-dark);
 			}
-		}
-	}
-
-	&__item {
-		display: flex;
-		flex-direction: row;
-		align-items: center;
-		margin-block: var(--default-grid-baseline);
-		padding-inline: var(--default-grid-baseline);
-		height: 100%;
-		border-radius: var(--border-radius);
-
-		&--thumb {
-			cursor: default;
-		}
-
-		&:hover {
-			background-color: var(--color-background-hover);
-		}
-	}
-
-	&__content {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-	}
-
-	&__header {
-		display: flex;
-		gap: var(--default-grid-baseline);
-		max-width: 150px;
-		font-weight: 500;
-
-		&-text {
-			display: inline-block;
-			width: 100%;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-
-		:deep(.material-design-icon) {
-			margin-top: 2px;
 		}
 	}
 

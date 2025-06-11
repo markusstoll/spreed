@@ -1,25 +1,26 @@
+import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 /**
  * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
-import debounce from 'debounce'
-import { ref, nextTick, computed, watch, onBeforeUnmount, onMounted } from 'vue'
-
-import { subscribe, unsubscribe } from '@nextcloud/event-bus'
-
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { CONFIG, CONVERSATION } from '../constants.ts'
+import { getTalkConfig } from '../services/CapabilitiesManager.ts'
+import { EventBus } from '../services/EventBus.ts'
+import { useSessionStore } from '../stores/session.ts'
 import { useDocumentVisibility } from './useDocumentVisibility.ts'
 import { useIsInCall } from './useIsInCall.js'
 import { useStore } from './useStore.js'
-import { CONVERSATION } from '../constants.ts'
-import { EventBus } from '../services/EventBus.ts'
+
+const experimentalUpdateParticipants = (getTalkConfig('local', 'experiments', 'enabled') ?? 0) & CONFIG.EXPERIMENTAL.UPDATE_PARTICIPANTS
 
 /**
  * @param {import('vue').Ref} isActive whether the participants tab is active
  * @param {boolean} isTopBar whether the component is the top bar
  */
 export function useGetParticipants(isActive = ref(true), isTopBar = true) {
-
 	// Encapsulation
+	const sessionStore = useSessionStore()
 	const store = useStore()
 	const token = computed(() => store.getters.getToken())
 	const conversation = computed(() => store.getters.conversation(token.value))
@@ -29,6 +30,9 @@ export function useGetParticipants(isActive = ref(true), isTopBar = true) {
 		|| conversation.value?.type === CONVERSATION.TYPE.ONE_TO_ONE_FORMER)
 	let fetchingParticipants = false
 	let pendingChanges = true
+	let throttleFastUpdateTimeout = null
+	let throttleSlowUpdateTimeout = null
+	let throttleLongUpdateTimeout = null
 
 	/**
 	 * Initialise the get participants listeners
@@ -36,21 +40,51 @@ export function useGetParticipants(isActive = ref(true), isTopBar = true) {
 	 */
 	function initialiseGetParticipants() {
 		EventBus.on('joined-conversation', onJoinedConversation)
-
-		// FIXME this works only temporary until signaling is fixed to be only on the calls
-		// Then we have to search for another solution. Maybe the room list which we update
-		// periodically gets a hash of all online sessions?
-		EventBus.on('signaling-participant-list-changed', debounceUpdateParticipants)
+		if (experimentalUpdateParticipants) {
+			EventBus.on('signaling-users-in-room', handleUsersUpdated)
+			EventBus.on('signaling-users-joined', handleUsersUpdated)
+			EventBus.on('signaling-users-changed', handleUsersUpdated)
+			EventBus.on('signaling-users-left', handleUsersLeft)
+			EventBus.on('signaling-all-users-changed-in-call-to-disconnected', handleUsersDisconnected)
+			EventBus.on('signaling-participant-list-updated', throttleUpdateParticipants)
+		} else {
+			// FIXME this works only temporary until signaling is fixed to be only on the calls
+			// Then we have to search for another solution. Maybe the room list which we update
+			// periodically gets a hash of all online sessions?
+			EventBus.on('signaling-participant-list-changed', throttleUpdateParticipants)
+		}
 		subscribe('guest-promoted', onJoinedConversation)
 	}
 
+	const handleUsersUpdated = async ([users]) => {
+		if (sessionStore.updateSessions(token.value, users)) {
+			throttleUpdateParticipants()
+		} else {
+			throttleLongUpdate()
+		}
+	}
+
+	const handleUsersLeft = ([sessionIds]) => {
+		sessionStore.updateSessionsLeft(token.value, sessionIds)
+		throttleLongUpdate()
+	}
+	const handleUsersDisconnected = () => {
+		sessionStore.updateParticipantsDisconnectedFromStandaloneSignaling(token.value)
+		throttleLongUpdate()
+	}
 	/**
 	 * Stop the get participants listeners
 	 *
 	 */
 	function stopGetParticipants() {
 		EventBus.off('joined-conversation', onJoinedConversation)
-		EventBus.off('signaling-participant-list-changed', debounceUpdateParticipants)
+		EventBus.off('signaling-users-in-room', handleUsersUpdated)
+		EventBus.off('signaling-users-joined', handleUsersUpdated)
+		EventBus.off('signaling-users-changed', handleUsersUpdated)
+		EventBus.off('signaling-users-left', handleUsersLeft)
+		EventBus.off('signaling-all-users-changed-in-call-to-disconnected', handleUsersDisconnected)
+		EventBus.off('signaling-participant-list-updated', throttleUpdateParticipants)
+		EventBus.off('signaling-participant-list-changed', throttleUpdateParticipants)
 		unsubscribe('guest-promoted', onJoinedConversation)
 	}
 
@@ -58,11 +92,11 @@ export function useGetParticipants(isActive = ref(true), isTopBar = true) {
 		if (isOneToOneConversation.value) {
 			cancelableGetParticipants()
 		} else {
-			nextTick(() => debounceUpdateParticipants())
+			nextTick(() => throttleUpdateParticipants())
 		}
 	}
 
-	const debounceUpdateParticipants = () => {
+	const throttleUpdateParticipants = () => {
 		if (!isActive.value && !isInCall.value) {
 			// Update is ignored but there is a flag to force the participants update
 			pendingChanges = true
@@ -70,11 +104,11 @@ export function useGetParticipants(isActive = ref(true), isTopBar = true) {
 		}
 
 		if (isDocumentVisible.value && (isInCall.value || !conversation.value?.hasCall)) {
-			debounceFastUpdateParticipants()
+			throttleFastUpdate()
 		} else {
-			debounceSlowUpdateParticipants()
+			throttleSlowUpdate()
 		}
-	    pendingChanges = false
+		pendingChanges = false
 	}
 
 	const cancelableGetParticipants = async () => {
@@ -85,17 +119,37 @@ export function useGetParticipants(isActive = ref(true), isTopBar = true) {
 		}
 
 		fetchingParticipants = true
-		debounceFastUpdateParticipants.clear()
-		debounceSlowUpdateParticipants.clear()
+
+		// Cancel the parallel request queue to not fetch twice
+		clearTimeout(throttleFastUpdateTimeout)
+		throttleFastUpdateTimeout = null
+		clearTimeout(throttleSlowUpdateTimeout)
+		throttleSlowUpdateTimeout = null
+		clearTimeout(throttleLongUpdateTimeout)
+		throttleLongUpdateTimeout = null
 
 		await store.dispatch('fetchParticipants', { token: token.value })
 		fetchingParticipants = false
 	}
 
-	const debounceFastUpdateParticipants = debounce(
-		cancelableGetParticipants, 3000)
-	const debounceSlowUpdateParticipants = debounce(
-		cancelableGetParticipants, 15000)
+	const throttleFastUpdate = () => {
+		if (throttleFastUpdateTimeout) {
+			return
+		}
+		throttleFastUpdateTimeout = setTimeout(cancelableGetParticipants, 3_000)
+	}
+	const throttleSlowUpdate = () => {
+		if (throttleSlowUpdateTimeout) {
+			return
+		}
+		throttleSlowUpdateTimeout = setTimeout(cancelableGetParticipants, 15_000)
+	}
+	const throttleLongUpdate = () => {
+		if (throttleLongUpdateTimeout) {
+			return
+		}
+		throttleLongUpdateTimeout = setTimeout(cancelableGetParticipants, 60_000)
+	}
 
 	onMounted(() => {
 		if (isTopBar) {
@@ -105,7 +159,7 @@ export function useGetParticipants(isActive = ref(true), isTopBar = true) {
 
 	watch(isActive, (newValue) => {
 		if (newValue && pendingChanges) {
-			debounceUpdateParticipants()
+			throttleUpdateParticipants()
 		}
 	})
 

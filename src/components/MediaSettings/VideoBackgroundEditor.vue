@@ -7,7 +7,7 @@
 	<div class="background-editor">
 		<button key="clear"
 			class="background-editor__element"
-			:class="{'background-editor__element--selected': selectedBackground === 'none'}"
+			:class="{ 'background-editor__element--selected': selectedBackground === 'none' }"
 			@click="handleSelectBackground('none')">
 			<IconCancel :size="20" />
 			{{
@@ -17,7 +17,7 @@
 		</button>
 		<button key="blur"
 			class="background-editor__element"
-			:class="{'background-editor__element--selected': selectedBackground === 'blur'}"
+			:class="{ 'background-editor__element--selected': selectedBackground === 'blur' }"
 			@click="handleSelectBackground('blur')">
 			<IconBlur :size="20" />
 			{{ t('spreed', 'Blur') }}
@@ -30,7 +30,7 @@
 					{{ t('spreed', 'Upload') }}
 				</button>
 				<button class="background-editor__element"
-					:class="{'background-editor__element--selected': isCustomBackground }"
+					:class="{ 'background-editor__element--selected': isCustomBackground }"
 					@click="showFilePicker = true">
 					<IconFolder :size="20" />
 					{{ t('spreed', 'Files') }}
@@ -41,9 +41,9 @@
 				:aria-label="ariaLabelForPredefinedBackground(path)"
 				:title="ariaLabelForPredefinedBackground(path)"
 				class="background-editor__element"
-				:class="{'background-editor__element--selected': selectedBackground === path}"
+				:class="{ 'background-editor__element--selected': selectedBackground === path }"
 				:style="{
-					'background-image': 'url(' + path + ')'
+					'background-image': 'url(' + path + ')',
 				}"
 				@click="handleSelectBackground(path)">
 				<IconCheckBold v-if="selectedBackground === path"
@@ -72,17 +72,15 @@
 </template>
 
 <script>
+import { showError } from '@nextcloud/dialogs'
+import { FilePickerVue } from '@nextcloud/dialogs/filepicker.js'
+import { t } from '@nextcloud/l10n'
+import { generateUrl, imagePath } from '@nextcloud/router'
 import IconBlur from 'vue-material-design-icons/Blur.vue'
 import IconCancel from 'vue-material-design-icons/Cancel.vue'
 import IconCheckBold from 'vue-material-design-icons/CheckBold.vue'
 import IconFolder from 'vue-material-design-icons/Folder.vue'
 import IconUpload from 'vue-material-design-icons/Upload.vue'
-
-import { showError } from '@nextcloud/dialogs'
-import { FilePickerVue } from '@nextcloud/dialogs/filepicker.js'
-import { t } from '@nextcloud/l10n'
-import { imagePath, generateUrl } from '@nextcloud/router'
-
 import { VIRTUAL_BACKGROUND } from '../../constants.ts'
 import BrowserStorage from '../../services/BrowserStorage.js'
 import { getTalkConfig } from '../../services/CapabilitiesManager.ts'
@@ -131,6 +129,7 @@ export default {
 		return {
 			canUploadBackgrounds: getTalkConfig('local', 'call', 'can-upload-background'),
 			predefinedBackgrounds: getTalkConfig('local', 'call', 'predefined-backgrounds'),
+			predefinedBackgroundsV2: getTalkConfig('local', 'call', 'predefined-backgrounds-v2'),
 			settingsStore: useSettingsStore(),
 		}
 	},
@@ -150,7 +149,11 @@ export default {
 		},
 
 		predefinedBackgroundsURLs() {
-			return this.predefinedBackgrounds.map(fileName => {
+			if (this.predefinedBackgroundsV2) {
+				return this.predefinedBackgroundsV2
+			}
+
+			return this.predefinedBackgrounds.map((fileName) => {
 				return imagePath('spreed', 'backgrounds/' + fileName)
 			})
 		},
@@ -163,7 +166,7 @@ export default {
 			return [{
 				label: t('spreed', 'Confirm'),
 				callback: (nodes) => this.handleFileChoose(nodes),
-				type: 'primary'
+				type: 'primary',
 			}]
 		},
 	},
@@ -205,7 +208,6 @@ export default {
 		},
 
 		async handleFileInput(event) {
-
 			// Make file path
 			const file = event.target.files[0]
 
@@ -235,7 +237,6 @@ export default {
 				})
 
 				this.handleSelectBackground(previewURL)
-
 			} catch (error) {
 				console.debug(error)
 				showError(t('spreed', 'Error while uploading the file'))

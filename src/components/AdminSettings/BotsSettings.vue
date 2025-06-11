@@ -78,16 +78,13 @@
 </template>
 
 <script>
+import { t } from '@nextcloud/l10n'
+import moment from '@nextcloud/moment'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcPopover from '@nextcloud/vue/components/NcPopover'
 import Cancel from 'vue-material-design-icons/Cancel.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Lock from 'vue-material-design-icons/Lock.vue'
-
-import { t } from '@nextcloud/l10n'
-import moment from '@nextcloud/moment'
-
-import NcButton from '@nextcloud/vue/components/NcButton'
-import NcPopover from '@nextcloud/vue/components/NcPopover'
-
 import { BOT } from '../../constants.ts'
 import { getAllBots } from '../../services/botsService.ts'
 
@@ -120,7 +117,7 @@ export default {
 		},
 
 		botsExtended() {
-			return this.bots.map(bot => ({
+			return this.bots.map((bot) => ({
 				...bot,
 				...this.getStateIcon(bot.state),
 				description: bot.description ?? t('spreed', 'Description is not provided'),
@@ -144,13 +141,13 @@ export default {
 		t,
 		getStateIcon(state) {
 			switch (state) {
-			case BOT.STATE.NO_SETUP:
-				return { state_icon_component: Lock, state_icon_label: t('spreed', 'Locked for moderators'), state_icon_color: 'var(--color-warning)' }
-			case BOT.STATE.ENABLED:
-				return { state_icon_component: Check, state_icon_label: t('spreed', 'Enabled'), state_icon_color: 'var(--color-success)' }
-			case BOT.STATE.DISABLED:
-			default:
-				return { state_icon_component: Cancel, state_icon_label: t('spreed', 'Disabled'), state_icon_color: 'var(--color-error)' }
+				case BOT.STATE.NO_SETUP:
+					return { state_icon_component: Lock, state_icon_label: t('spreed', 'Locked for moderators'), state_icon_color: 'var(--color-warning)' }
+				case BOT.STATE.ENABLED:
+					return { state_icon_component: Check, state_icon_label: t('spreed', 'Enabled'), state_icon_color: 'var(--color-success)' }
+				case BOT.STATE.DISABLED:
+				default:
+					return { state_icon_component: Cancel, state_icon_label: t('spreed', 'Disabled'), state_icon_color: 'var(--color-error)' }
 			}
 		},
 	},

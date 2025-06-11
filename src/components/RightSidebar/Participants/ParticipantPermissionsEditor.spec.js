@@ -5,11 +5,9 @@
 import { createLocalVue, mount } from '@vue/test-utils'
 import { cloneDeep } from 'lodash'
 import Vuex from 'vuex'
-
-import ParticipantPermissionsEditor from './ParticipantPermissionsEditor.vue'
 import PermissionsEditor from '../../PermissionsEditor/PermissionsEditor.vue'
-
-import { PARTICIPANT, ATTENDEE } from '../../../constants.ts'
+import ParticipantPermissionsEditor from './ParticipantPermissionsEditor.vue'
+import { ATTENDEE, PARTICIPANT } from '../../../constants.ts'
 import storeConfig from '../../../store/storeConfig.js'
 
 describe('ParticipantPermissionsEditor.vue', () => {
@@ -49,9 +47,7 @@ describe('ParticipantPermissionsEditor.vue', () => {
 		testStoreConfig.modules.conversationsStore.getters.conversation = () => conversationGetterMock
 		// Add a mock function for the action and see if its called and with which arguments
 		testStoreConfig.modules.participantsStore.actions.setPermissions = jest.fn()
-		// eslint-disable-next-line import/no-named-as-default-member
 		store = new Vuex.Store(testStoreConfig)
-
 	})
 
 	afterEach(() => {
@@ -118,7 +114,6 @@ describe('ParticipantPermissionsEditor.vue', () => {
 	})
 
 	describe('Dispatches the action to set the right permissions', () => {
-
 		test('Dispatches setPermissions with the correct permissions value when a permission is added', async () => {
 			const wrapper = await mountParticipantPermissionsEditor(participant)
 
@@ -138,7 +133,7 @@ describe('ParticipantPermissionsEditor.vue', () => {
 						| PARTICIPANT.PERMISSIONS.PUBLISH_AUDIO
 						| PARTICIPANT.PERMISSIONS.PUBLISH_VIDEO
 						| PARTICIPANT.PERMISSIONS.CUSTOM,
-				})
+				}),
 			)
 		})
 
@@ -159,7 +154,7 @@ describe('ParticipantPermissionsEditor.vue', () => {
 						| PARTICIPANT.PERMISSIONS.CALL_JOIN
 						| PARTICIPANT.PERMISSIONS.PUBLISH_VIDEO
 						| PARTICIPANT.PERMISSIONS.CUSTOM,
-				})
+				}),
 			)
 		})
 	})

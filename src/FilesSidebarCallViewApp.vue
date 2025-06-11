@@ -16,10 +16,9 @@
 
 <script>
 import LoadingComponent from './components/LoadingComponent.vue'
-
 import { useHashCheck } from './composables/useHashCheck.js'
 import { useIsInCall } from './composables/useIsInCall.js'
-import { useSessionIssueHandler } from './composables/useSessionIssueHandler.js'
+import { useSessionIssueHandler } from './composables/useSessionIssueHandler.ts'
 
 export default {
 
@@ -32,6 +31,7 @@ export default {
 				render: (h) => h(LoadingComponent, { class: 'call-loading' }),
 			},
 		}),
+
 		TopBar: () => import(/* webpackChunkName: "files-sidebar-call-chunk" */'./components/TopBar/TopBar.vue'),
 	},
 

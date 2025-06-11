@@ -1,14 +1,12 @@
+import { setGuestNickname } from '@nextcloud/auth'
+import { emit } from '@nextcloud/event-bus'
+import { t } from '@nextcloud/l10n'
 /**
  * SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import { defineStore } from 'pinia'
 import Vue from 'vue'
-
-import { setGuestNickname } from '@nextcloud/auth'
-import { emit } from '@nextcloud/event-bus'
-import { t } from '@nextcloud/l10n'
-
 import { setGuestUserName } from '../services/participantsService.js'
 import store from '../store/index.js'
 
@@ -60,7 +58,6 @@ export const useGuestNameStore = defineStore('guestName', {
 		addGuestName({ token, actorId, actorDisplayName }, { noUpdate }) {
 			if (!this.guestNames[token]) {
 				Vue.set(this.guestNames, token, {})
-
 			}
 			if (!this.guestNames[token][actorId] || actorDisplayName === '') {
 				Vue.set(this.guestNames[token], actorId, t('spreed', 'Guest'))

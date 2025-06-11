@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import MediaDevicesSource from './MediaDevicesSource.js'
 import { mediaDevicesManager } from '../../webrtc/index.js'
+import MediaDevicesSource from './MediaDevicesSource.js'
 
 /**
  * Helper function to create MediaStreamTrack mocks with just the attributes and
@@ -66,10 +66,10 @@ function newMediaStreamMock(id) {
 			return this._tracks
 		})
 		this.getAudioTracks = jest.fn(() => {
-			return this._tracks.filter(track => track.kind === 'audio')
+			return this._tracks.filter((track) => track.kind === 'audio')
 		})
 		this.getVideoTracks = jest.fn(() => {
-			return this._tracks.filter(track => track.kind === 'video')
+			return this._tracks.filter((track) => track.kind === 'video')
 		})
 	}
 	return new MediaStreamMock()
@@ -168,7 +168,6 @@ describe('MediaDevicesSource', () => {
 	})
 
 	describe('start', () => {
-
 		/**
 		 * Checks the expected output tracks and event listeners.
 		 */
@@ -640,6 +639,7 @@ describe('MediaDevicesSource', () => {
 			try {
 				await mediaDevicesSource.start(retryNoVideoCallback)
 			} catch (exception) {
+				// expected Error: Audio and/or video is required
 			}
 
 			getUserMediaAudioTrack = newMediaStreamTrackMock('audio', 'audio', 'audio-device')
@@ -662,6 +662,7 @@ describe('MediaDevicesSource', () => {
 			try {
 				await mediaDevicesSource.start(retryNoVideoCallback)
 			} catch (exception) {
+				// expected Error: Audio and/or video is required
 			}
 
 			jest.spyOn(mediaDevicesManager, 'getUserMedia').mockImplementationOnce(async (constraints) => {
@@ -685,6 +686,7 @@ describe('MediaDevicesSource', () => {
 			try {
 				await mediaDevicesSource.start(retryNoVideoCallback)
 			} catch (exception) {
+				// expected Error: Audio and/or video is required
 			}
 
 			mediaDevicesSource.setAudioAllowed(false)
@@ -929,6 +931,7 @@ describe('MediaDevicesSource', () => {
 			try {
 				await mediaDevicesSource.start(retryNoVideoCallback)
 			} catch (exception) {
+				// expected Error: Audio and/or video is required
 			}
 
 			mediaDevicesSource.stop()

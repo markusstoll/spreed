@@ -67,7 +67,7 @@
 			<ul>
 				<BridgePart v-for="(part, i) in parts"
 					:key="part.type + i"
-					:num="i+1"
+					:num="i + 1"
 					:part="part"
 					:type="matterbridgeTypes[part.type]"
 					:editing="part.editing"
@@ -81,26 +81,22 @@
 </template>
 
 <script>
-import Message from 'vue-material-design-icons/Message.vue'
-import Plus from 'vue-material-design-icons/Plus.vue'
-
 import { showSuccess } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
-
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
-
+import Message from 'vue-material-design-icons/Message.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
 import BridgePart from './BridgePart.vue'
-
-import { matterbridgeTypes } from './matterbridgeTypes.ts'
 import {
 	editBridge,
 	getBridge,
 	getBridgeProcessState,
 } from '../../../services/matterbridgeService.js'
+import { matterbridgeTypes } from './matterbridgeTypes.ts'
 
 export default {
 	name: 'MatterbridgeSettings',
@@ -180,6 +176,7 @@ export default {
 			clearInterval(this.stateLoop)
 			this.stateLoop = setInterval(() => this.getBridgeProcessState(token), 60000)
 		},
+
 		clickAddPart(event) {
 			const typeKey = event.type
 			const type = this.matterbridgeTypes[typeKey]
@@ -192,26 +189,31 @@ export default {
 			}
 			this.parts.unshift(newPart)
 		},
+
 		onDelete(i) {
 			this.parts.splice(i, 1)
 			this.save()
 		},
+
 		onEditClicked(i) {
 			this.parts[i].editing = !this.parts[i].editing
 			if (!this.parts[i].editing) {
 				this.save()
 			}
 		},
+
 		onEnabled(checked) {
 			this.enabled = checked
 			this.save()
 		},
+
 		save() {
 			if (this.parts.length === 0) {
 				this.enabled = false
 			}
 			this.editBridge(this.token, this.enabled, this.parts)
 		},
+
 		async getBridge(token) {
 			this.loading = true
 			try {
@@ -226,9 +228,10 @@ export default {
 			}
 			this.loading = false
 		},
+
 		async editBridge() {
 			this.loading = true
-			this.parts.forEach(part => {
+			this.parts.forEach((part) => {
 				part.editing = false
 			})
 			try {
@@ -241,6 +244,7 @@ export default {
 			}
 			this.loading = false
 		},
+
 		async getBridgeProcessState(token) {
 			try {
 				const result = await getBridgeProcessState(token)
@@ -250,6 +254,7 @@ export default {
 				console.error(exception)
 			}
 		},
+
 		showLogContent() {
 			this.getBridgeProcessState(this.token)
 			this.logModal = true

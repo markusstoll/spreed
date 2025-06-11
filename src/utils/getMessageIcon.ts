@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import type { ComponentPublicInstance } from 'vue'
+import type { Conversation } from '../types/index.ts'
 
 import IconCardText from 'vue-material-design-icons/CardText.vue'
 import IconContacts from 'vue-material-design-icons/Contacts.vue'
@@ -13,8 +14,7 @@ import IconMicrophone from 'vue-material-design-icons/Microphone.vue'
 import IconMovie from 'vue-material-design-icons/Movie.vue'
 import IconMusicNote from 'vue-material-design-icons/MusicNote.vue'
 import IconPoll from 'vue-material-design-icons/Poll.vue'
-
-import type { Conversation } from '../types/index.ts'
+import { MESSAGE } from '../constants.ts'
 
 export const getMessageIcon = (lastMessage: Conversation['lastMessage']): ComponentPublicInstance | null => {
 	if (!lastMessage || Array.isArray(lastMessage)) {
@@ -29,7 +29,7 @@ export const getMessageIcon = (lastMessage: Conversation['lastMessage']): Compon
 			return IconImage // Media - Images
 		}
 		if (file.mimetype?.startsWith('audio')) {
-			return lastMessage.messageType === 'voice-message'
+			return lastMessage.messageType === MESSAGE.TYPE.VOICE_MESSAGE
 				? IconMicrophone // Voice messages
 				: IconMusicNote // Media - Audio
 		}

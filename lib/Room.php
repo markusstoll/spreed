@@ -43,10 +43,19 @@ class Room {
 	public const OBJECT_TYPE_EVENT = 'event';
 	public const OBJECT_TYPE_EXTENDED_CONVERSATION = 'extended_conversation';
 	public const OBJECT_TYPE_FILE = 'file';
+	public const OBJECT_TYPE_INSTANT_MEETING = 'instant_meeting';
 	public const OBJECT_TYPE_NOTE_TO_SELF = 'note_to_self';
-	public const OBJECT_TYPE_PHONE = 'phone';
+	/**
+	 * @deprecated No longer used for new conversations
+	 */
+	public const OBJECT_TYPE_PHONE_LEGACY = 'phone';
+	public const OBJECT_TYPE_PHONE_PERSIST = 'phone_persist';
+	public const OBJECT_TYPE_PHONE_TEMPORARY = 'phone_temporary';
 	public const OBJECT_TYPE_SAMPLE = 'sample';
 	public const OBJECT_TYPE_VIDEO_VERIFICATION = 'share:password';
+
+	public const OBJECT_ID_PHONE_OUTGOING = 'phone';
+	public const OBJECT_ID_PHONE_INCOMING = 'direct-dialin';
 
 	public const RECORDING_NONE = 0;
 	public const RECORDING_VIDEO = 1;

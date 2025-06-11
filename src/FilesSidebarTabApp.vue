@@ -32,12 +32,9 @@ import { getCurrentUser } from '@nextcloud/auth'
 import Axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
-
 import NcButton from '@nextcloud/vue/components/NcButton'
-
 import LoadingComponent from './components/LoadingComponent.vue'
-
-import { useSessionIssueHandler } from './composables/useSessionIssueHandler.js'
+import { useSessionIssueHandler } from './composables/useSessionIssueHandler.ts'
 import { EventBus } from './services/EventBus.ts'
 import { getFileConversation } from './services/filesIntegrationServices.js'
 import {
@@ -58,6 +55,7 @@ export default {
 				render: (h) => h(LoadingComponent, { class: 'tab-loading' }),
 			},
 		}),
+
 		NcButton,
 	},
 
@@ -84,15 +82,19 @@ export default {
 		fileInfo() {
 			return this.Talk.fileInfo || {}
 		},
+
 		fileId() {
 			return this.fileInfo.id
 		},
+
 		token() {
 			return this.$store.getters.getToken()
 		},
+
 		fileIdForToken() {
 			return this.$store.getters.getFileIdForToken()
 		},
+
 		isChatTheActiveTab() {
 			// FIXME check for empty active tab is currently needed because the
 			// activeTab is not set when opening the sidebar from the "Details"
@@ -312,11 +314,11 @@ export default {
 				// Sharing tab was opened or not).
 				shareType = parseInt(shareType)
 				return shareType === OC.Share.SHARE_TYPE_USER
-						|| shareType === OC.Share.SHARE_TYPE_GROUP
-						|| shareType === OC.Share.SHARE_TYPE_CIRCLE
-						|| shareType === OC.Share.SHARE_TYPE_ROOM
-						|| shareType === OC.Share.SHARE_TYPE_LINK
-						|| shareType === OC.Share.SHARE_TYPE_EMAIL
+					|| shareType === OC.Share.SHARE_TYPE_GROUP
+					|| shareType === OC.Share.SHARE_TYPE_CIRCLE
+					|| shareType === OC.Share.SHARE_TYPE_ROOM
+					|| shareType === OC.Share.SHARE_TYPE_LINK
+					|| shareType === OC.Share.SHARE_TYPE_EMAIL
 			})
 
 			if (shareTypes.length === 0) {

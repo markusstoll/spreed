@@ -4,10 +4,9 @@
  */
 
 import * as wasmCheck from 'wasm-check'
-
-import TrackSinkSource from './TrackSinkSource.js'
 import { VIRTUAL_BACKGROUND } from '../../../constants.ts'
 import JitsiStreamBackgroundEffect from '../effects/virtual-background/JitsiStreamBackgroundEffect.js'
+import TrackSinkSource from './TrackSinkSource.js'
 
 /**
  * Processor node to set a virtual background on a video track.
@@ -46,7 +45,6 @@ import JitsiStreamBackgroundEffect from '../effects/virtual-background/JitsiStre
  *        -------------------
  */
 export default class VirtualBackground extends TrackSinkSource {
-
 	static _wasmSupported
 	static _wasmSimd
 	static _canvasFilterSupported
@@ -264,7 +262,7 @@ export default class VirtualBackground extends TrackSinkSource {
 		}
 
 		this._jitsiStreamBackgroundEffect.stopEffect()
-		this._outputStream.getTracks().forEach(track => {
+		this._outputStream.getTracks().forEach((track) => {
 			this._disableRemoveTrackWhenEnded(track)
 
 			track.stop()
@@ -303,5 +301,4 @@ export default class VirtualBackground extends TrackSinkSource {
 
 		this._jitsiStreamBackgroundEffect.setVirtualBackground(virtualBackground)
 	}
-
 }

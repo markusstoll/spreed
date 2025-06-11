@@ -1,3 +1,4 @@
+import { showError } from '@nextcloud/dialogs'
 /**
  * SPDX-FileCopyrightText: 2021 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -7,14 +8,10 @@ import flushPromises from 'flush-promises'
 import { cloneDeep } from 'lodash'
 import { createPinia, setActivePinia } from 'pinia'
 import Vuex from 'vuex'
-
-import { showError } from '@nextcloud/dialogs'
-
-import storeConfig from './storeConfig.js'
-// eslint-disable-next-line import/order -- required for testing
-import messagesStore from './messagesStore.js'
 import {
-	ATTENDEE, CHAT,
+	ATTENDEE,
+	CHAT,
+	MESSAGE,
 } from '../constants.ts'
 import {
 	fetchNoteToSelfConversation,
@@ -22,17 +19,19 @@ import {
 import {
 	deleteMessage,
 	editMessage,
-	updateLastReadMessage,
 	fetchMessages,
 	getMessageContext,
 	pollNewMessages,
 	postNewMessage,
 	postRichObjectToConversation,
+	updateLastReadMessage,
 } from '../services/messagesService.ts'
 import { useGuestNameStore } from '../stores/guestName.js'
 import { useReactionsStore } from '../stores/reactions.js'
 import { generateOCSErrorResponse, generateOCSResponse } from '../test-helpers.js'
 import CancelableRequest from '../utils/cancelableRequest.js'
+import messagesStore from './messagesStore.js'
+import storeConfig from './storeConfig.js'
 
 jest.mock('../services/messagesService', () => ({
 	deleteMessage: jest.fn(),
@@ -62,7 +61,7 @@ jest.mock('@nextcloud/capabilities', () => ({
 			'features-local': [],
 			'config-local': { chat: [] },
 		},
-	}))
+	})),
 }))
 
 describe('messagesStore', () => {
@@ -164,7 +163,7 @@ describe('messagesStore', () => {
 				},
 			}]
 
-			messages.forEach(message => {
+			messages.forEach((message) => {
 				store.dispatch('processMessage', { token: TOKEN, message })
 			})
 
@@ -180,7 +179,7 @@ describe('messagesStore', () => {
 				id: 2,
 				token: TOKEN,
 				parent: parentMessage,
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 			}
 
 			store.dispatch('processMessage', { token: TOKEN, message: message1 })
@@ -267,7 +266,7 @@ describe('messagesStore', () => {
 				id: 4,
 				token: TOKEN,
 				message: '👍',
-				messageType: 'system',
+				messageType: MESSAGE.TYPE.SYSTEM,
 				systemMessage: 'reaction',
 				parent: {
 					id: 2,
@@ -340,7 +339,8 @@ describe('messagesStore', () => {
 			[1, 400, 200, 399, 200, 299],
 		]
 
-		it.each(testCases)('eases list from [%s - %s] to [%s - %s] (length: %s) with lastReadMessage %s',
+		it.each(testCases)(
+			'eases list from [%s - %s] to [%s - %s] (length: %s) with lastReadMessage %s',
 			(oldFirst, oldLast, newFirst, newLast, length, lastReadMessage) => {
 			// Arrange
 				conversationMock.mockReturnValue({ lastReadMessage })
@@ -362,7 +362,8 @@ describe('messagesStore', () => {
 				if (oldFirst < lastReadMessage && lastReadMessage < oldLast) {
 					expect(store.getters.message(TOKEN, lastReadMessage)).toBeDefined()
 				}
-			})
+			},
+		)
 	})
 
 	describe('delete message', () => {
@@ -390,7 +391,7 @@ describe('messagesStore', () => {
 					id: 10,
 					token: TOKEN,
 					message: 'parent message deleted',
-					messageType: 'comment_deleted',
+					messageType: MESSAGE.TYPE.COMMENT_DELETED,
 				},
 			}
 			const response = generateOCSResponse({ payload })
@@ -405,7 +406,7 @@ describe('messagesStore', () => {
 				id: 10,
 				token: TOKEN,
 				message: 'parent message deleted',
-				messageType: 'comment_deleted',
+				messageType: MESSAGE.TYPE.COMMENT_DELETED,
 			}])
 		})
 
@@ -414,7 +415,7 @@ describe('messagesStore', () => {
 				id: 11,
 				token: TOKEN,
 				message: 'reply to hello',
-				parent: cloneDeep(message)
+				parent: cloneDeep(message),
 			}
 			store.dispatch('processMessage', { token: TOKEN, message: childMessage })
 
@@ -422,7 +423,7 @@ describe('messagesStore', () => {
 				id: 10,
 				token: TOKEN,
 				message: 'parent message deleted',
-				messageType: 'comment_deleted',
+				messageType: MESSAGE.TYPE.COMMENT_DELETED,
 			}
 			const payload = {
 				id: 12,
@@ -455,7 +456,7 @@ describe('messagesStore', () => {
 					id: 9,
 					token: TOKEN,
 					message: 'parent message deleted',
-					messageType: 'comment_deleted',
+					messageType: MESSAGE.TYPE.COMMENT_DELETED,
 				},
 			}
 			const response = generateOCSResponse({ payload })
@@ -474,7 +475,7 @@ describe('messagesStore', () => {
 			deleteMessage.mockRejectedValueOnce(error)
 
 			await store.dispatch('deleteMessage', { token: message.token, id: message.id, placeholder: 'placeholder-text' })
-				.catch(error => {
+				.catch((error) => {
 					expect(error.status).toBe(400)
 
 					expect(store.getters.messagesList(TOKEN)).toMatchObject([message])
@@ -492,7 +493,7 @@ describe('messagesStore', () => {
 				id: 10,
 				token: TOKEN,
 				message: 'placeholder-message',
-				messageType: 'comment_deleted',
+				messageType: MESSAGE.TYPE.COMMENT_DELETED,
 			}])
 		})
 	})
@@ -520,7 +521,7 @@ describe('messagesStore', () => {
 					id: 10,
 					token: TOKEN,
 					message: 'hello edited',
-					messageType: 'comment',
+					messageType: MESSAGE.TYPE.COMMENT,
 				},
 			}
 			const response = generateOCSResponse({ payload })
@@ -534,7 +535,7 @@ describe('messagesStore', () => {
 				id: 10,
 				token: TOKEN,
 				message: 'hello edited',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 			}])
 		})
 
@@ -543,14 +544,14 @@ describe('messagesStore', () => {
 				id: 11,
 				token: TOKEN,
 				message: 'reply to hello',
-				parent: cloneDeep(message)
+				parent: cloneDeep(message),
 			}
 			store.dispatch('processMessage', { token: TOKEN, message: childMessage })
 			const editedParent = {
 				id: 10,
 				token: TOKEN,
 				message: 'hello edited',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 			}
 			const payload = {
 				id: 12,
@@ -605,7 +606,7 @@ describe('messagesStore', () => {
 				id: 'temp-1577908800000',
 				timestamp: 0,
 				systemMessage: '',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				message: 'original',
 			}
 
@@ -622,7 +623,7 @@ describe('messagesStore', () => {
 				id: 'temp-1577908800000',
 				timestamp: 0,
 				systemMessage: '',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				message: 'original',
 			}
 
@@ -645,7 +646,7 @@ describe('messagesStore', () => {
 				id: 'temp-1577908800000',
 				timestamp: 0,
 				systemMessage: '',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				message: 'original',
 			}
 
@@ -661,7 +662,7 @@ describe('messagesStore', () => {
 				id: 'temp-1577908800000',
 				timestamp: 0,
 				systemMessage: '',
-				messageType: 'comment',
+				messageType: MESSAGE.TYPE.COMMENT,
 				message: 'original',
 				referenceId: 'reference-1',
 			}
@@ -787,7 +788,7 @@ describe('messagesStore', () => {
 				payload: {
 					unreadMessages: 0,
 					unreadMention: false,
-				}
+				},
 			})
 			updateLastReadMessage.mockResolvedValue(response)
 
@@ -815,7 +816,7 @@ describe('messagesStore', () => {
 				payload: {
 					unreadMessages: 0,
 					unreadMention: false,
-				}
+				},
 			})
 			updateLastReadMessage.mockResolvedValue(response)
 
@@ -925,7 +926,6 @@ describe('messagesStore', () => {
 			[false, CHAT.FETCH_NEW, newMessagesList, 100, 102],
 		]
 		test.each(testCasesOld)('fetches messages from server: including last known - %s, look into future - %s', async (includeLastKnown, lookIntoFuture, payload, firstKnown, lastKnown) => {
-
 			const response = generateOCSResponse({
 				headers: {
 					'x-chat-last-common-read': '123',
@@ -937,7 +937,7 @@ describe('messagesStore', () => {
 			const expectedMessages = lookIntoFuture
 				? [originalMessagesList[0], ...newMessagesList]
 				: [...oldMessagesList, originalMessagesList[0]]
-			const expectedMessageFromGuest = expectedMessages.find(message => message.actorType === ATTENDEE.ACTOR_TYPE.GUESTS)
+			const expectedMessageFromGuest = expectedMessages.find((message) => message.actorType === ATTENDEE.ACTOR_TYPE.GUESTS)
 
 			await store.dispatch('fetchMessages', {
 				token: TOKEN,
@@ -1730,7 +1730,7 @@ describe('messagesStore', () => {
 				payload: {
 					unreadMessages: 0,
 					unreadMention: false,
-				}
+				},
 			})
 			updateLastReadMessage.mockResolvedValue(response2)
 			store.dispatch('postNewMessage', { token: TOKEN, temporaryMessage, options: { silent: false } }).catch(() => {
@@ -1809,9 +1809,7 @@ describe('messagesStore', () => {
 			console.error = jest.fn()
 
 			postNewMessage.mockRejectedValueOnce({ isAxiosError: true, response })
-			await expect(
-				store.dispatch('postNewMessage', { token: TOKEN, temporaryMessage, options: { silent: false } })
-			).rejects.toMatchObject({ response })
+			await expect(store.dispatch('postNewMessage', { token: TOKEN, temporaryMessage, options: { silent: false } })).rejects.toMatchObject({ response })
 
 			expect(store.getters.isSendingMessages).toBe(false)
 
@@ -1888,7 +1886,6 @@ describe('messagesStore', () => {
 
 			expect(cancelFunctionMocks[0]).not.toHaveBeenCalled()
 		})
-
 	})
 
 	describe('hasMoreMessagesToLoad', () => {
@@ -2053,7 +2050,6 @@ describe('messagesStore', () => {
 					referenceId: '',
 				},
 			)
-
 		})
 		test('forwards a message with mentions and remove the latter', () => {
 			// Arrange

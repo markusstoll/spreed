@@ -12,6 +12,7 @@
     "Dismiss notification" : "ปิดการแจ้งเตือน",
     "Accept" : "ยอมรับ",
     "Decline" : "ปฏิเสธ",
+    "Notification" : "การแจ้งเตือน",
     "Open settings" : "เปิดการตั้งค่า",
     "error" : "ข้อผิดพลาด",
     "Federation" : "ที่ติดต่อกับภายนอก",
@@ -90,6 +91,7 @@
     "Keyboard shortcuts" : "แป้นพิมพ์ลัด",
     "Search" : "ค้นหา",
     "Grid view" : "มุมมองแบบตาราง",
+    "Keep" : "เก็บ",
     "Submit" : "ส่ง",
     "User" : "ผู้ใช้",
     "Password" : "รหัสผ่าน",
@@ -111,8 +113,6 @@
     "__language_name__" : "ไทย",
     "Tasks" : "งาน",
     "Notes" : "โน้ต",
-    "Loading" : "กำลังโหลด",
-    "Close" : "ปิด",
-    "Password protect" : "ป้องกันด้วยรหัสผ่าน"
+    "Close" : "ปิด"
 },"pluralForm" :"nplurals=1; plural=0;"
 }

@@ -3,13 +3,6 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import Hex from 'crypto-js/enc-hex.js'
-import SHA256 from 'crypto-js/sha256.js'
-
-import axios from '@nextcloud/axios'
-import { generateOcsUrl } from '@nextcloud/router'
-
-import { CHAT } from '../constants.ts'
 import type {
 	ChatMessage,
 	clearHistoryResponse,
@@ -30,6 +23,12 @@ import type {
 	summarizeChatParams,
 	summarizeChatResponse,
 } from '../types/index.ts'
+
+import axios from '@nextcloud/axios'
+import { generateOcsUrl } from '@nextcloud/router'
+import Hex from 'crypto-js/enc-hex.js'
+import SHA256 from 'crypto-js/sha256.js'
+import { CHAT } from '../constants.ts'
 
 type ReceiveMessagesPayload = Partial<receiveMessagesParams> & { token: string }
 type GetMessageContextPayload = getMessageContextParams & { token: string, messageId: number }
@@ -207,7 +206,7 @@ const postRichObjectToConversation = async function(token: string, { objectType,
  * @param lastReadMessage id of the last read message to set
  * @param options request options
  */
-const updateLastReadMessage = async function(token: string, lastReadMessage?: number|null, options?: object): setReadMarkerResponse {
+const updateLastReadMessage = async function(token: string, lastReadMessage?: number | null, options?: object): setReadMarkerResponse {
 	return axios.post(generateOcsUrl('apps/spreed/api/v1/chat/{token}/read', { token }, options), {
 		lastReadMessage,
 	} as setReadMarkerParams, options)
@@ -237,15 +236,15 @@ const summarizeChat = async function(token: string, fromMessageId: summarizeChat
 }
 
 export {
-	fetchMessages,
-	pollNewMessages,
-	getMessageContext,
-	postNewMessage,
 	clearConversationHistory,
 	deleteMessage,
 	editMessage,
+	fetchMessages,
+	getMessageContext,
+	pollNewMessages,
+	postNewMessage,
 	postRichObjectToConversation,
-	updateLastReadMessage,
 	setConversationUnread,
 	summarizeChat,
+	updateLastReadMessage,
 }

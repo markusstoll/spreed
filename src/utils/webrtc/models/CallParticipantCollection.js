@@ -4,20 +4,17 @@
  */
 
 import { ref } from 'vue'
-
-import CallParticipantModel from './CallParticipantModel.js'
 import EmitterMixin from '../../EmitterMixin.js'
+import CallParticipantModel from './CallParticipantModel.js'
 
 /**
  *
  */
 export default function CallParticipantCollection() {
-
 	this._superEmitterMixin()
 
 	// FIXME: use reactive instead of ref after migration to vue 3
 	this.callParticipantModels = ref([])
-
 }
 
 CallParticipantCollection.prototype = {

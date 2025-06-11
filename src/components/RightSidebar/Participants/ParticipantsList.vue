@@ -19,10 +19,9 @@
 <script>
 
 import { inject } from 'vue'
-
-import Participant from './Participant.vue'
 import SelectableParticipant from '../../BreakoutRoomsEditor/SelectableParticipant.vue'
 import LoadingPlaceholder from '../../UIShared/LoadingPlaceholder.vue'
+import Participant from './Participant.vue'
 
 export default {
 	name: 'ParticipantsList',
@@ -41,10 +40,12 @@ export default {
 			type: Array,
 			required: true,
 		},
+
 		loading: {
 			type: Boolean,
 			default: false,
 		},
+
 		isSearchResult: {
 			type: Boolean,
 			default: false,

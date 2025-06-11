@@ -17,7 +17,6 @@
 import { t } from '@nextcloud/l10n'
 import { encodePath } from '@nextcloud/paths'
 import { generateRemoteUrl } from '@nextcloud/router'
-
 import { EventBus } from '../../../../../services/EventBus.ts'
 
 export default {
@@ -36,6 +35,7 @@ export default {
 			type: String,
 			default: '',
 		},
+
 		/**
 		 * Link share root, includes the file name.
 		 */
@@ -43,6 +43,7 @@ export default {
 			type: String,
 			default: '',
 		},
+
 		/**
 		 * File path relative to the user's home storage, used for previewing
 		 * the audio before upload
@@ -51,6 +52,7 @@ export default {
 			type: String,
 			default: '',
 		},
+
 		/**
 		 * Message ID.
 		 */
@@ -58,6 +60,7 @@ export default {
 			type: Number,
 			default: 0,
 		},
+
 		nextMessageId: {
 			type: Number,
 			default: 0,

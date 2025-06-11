@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace OCA\Talk\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Test\TestCase;
 
 class EventDocumentationTest extends TestCase {
@@ -24,9 +25,7 @@ class EventDocumentationTest extends TestCase {
 		return $data;
 	}
 
-	/**
-	 * @dataProvider dataEventDocumentation
-	 */
+	#[DataProvider('dataEventDocumentation')]
 	public function testEventDocumentation(string $eventClass): void {
 		$reflectionClass = new \ReflectionClass($eventClass);
 		if ($reflectionClass->isAbstract()) {
@@ -37,6 +36,10 @@ class EventDocumentationTest extends TestCase {
 		$classDocBlock = $reflectionClass->getDocComment();
 		if (is_string($classDocBlock) && str_contains($classDocBlock, '@deprecated')) {
 			self::assertTrue(true, 'Deprecated event ' . $eventClass . ' does not have to be documented');
+			return;
+		}
+		if (is_string($classDocBlock) && str_contains($classDocBlock, '@internal')) {
+			self::assertTrue(true, 'Internal event ' . $eventClass . ' does not have to be documented');
 			return;
 		}
 

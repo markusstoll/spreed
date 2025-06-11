@@ -45,17 +45,15 @@
 import { showError } from '@nextcloud/dialogs'
 import { emit } from '@nextcloud/event-bus'
 import { t } from '@nextcloud/l10n'
-
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-
 import LoadingComponent from '../../LoadingComponent.vue'
 import SelectPhoneNumber from '../../SelectPhoneNumber.vue'
 import DialpadPanel from '../../UIShared/DialpadPanel.vue'
-
 import { CONVERSATION, PARTICIPANT } from '../../../constants.ts'
 import { callSIPDialOut } from '../../../services/callsService.js'
+import { hasTalkFeature } from '../../../services/CapabilitiesManager.ts'
 import { createLegacyConversation } from '../../../services/conversationsService.ts'
 import { addParticipant } from '../../../services/participantsService.js'
 
@@ -71,6 +69,8 @@ export default {
 		SelectPhoneNumber,
 	},
 
+	expose: ['showModal'],
+
 	data() {
 		return {
 			modal: false,
@@ -79,8 +79,6 @@ export default {
 			participantPhoneItem: {},
 		}
 	},
-
-	expose: ['showModal'],
 
 	watch: {
 		modal(value) {
@@ -123,7 +121,7 @@ export default {
 				const response = await createLegacyConversation({
 					roomType: CONVERSATION.TYPE.GROUP,
 					roomName: this.participantPhoneItem.phoneNumber,
-					objectType: CONVERSATION.OBJECT_TYPE.PHONE,
+					objectType: hasTalkFeature('local', 'sip-direct-dialin') ? CONVERSATION.OBJECT_TYPE.PHONE_TEMPORARY : CONVERSATION.OBJECT_TYPE.PHONE_LEGACY,
 				})
 				conversation = response.data.ocs.data
 				await this.$store.dispatch('addConversation', conversation)
@@ -167,13 +165,13 @@ export default {
 				// request above could be cancelled, if there is parallel request, and return null
 				// in that case participants list will be fetched anyway and keeped in the store
 				const participantsList = response?.data.ocs.data || this.$store.getters.participantsList(token)
-				const attendeeId = participantsList.find(participant => participant.phoneNumber === phoneNumber)?.attendeeId
+				const attendeeId = participantsList.find((participant) => participant.phoneNumber === phoneNumber)?.attendeeId
 
 				await callSIPDialOut(token, attendeeId)
 			} catch (error) {
 				if (error?.response?.data?.ocs?.data?.message) {
 					showError(t('spreed', 'Phone number could not be called: {error}', {
-						error: error?.response?.data?.ocs?.data?.message
+						error: error?.response?.data?.ocs?.data?.message,
 					}))
 				} else {
 					console.error(error)

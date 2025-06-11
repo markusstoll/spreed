@@ -8,19 +8,28 @@ declare(strict_types=1);
 
 namespace OCA\SpreedCheats\Controller;
 
+use OCA\SpreedCheats\Calendar\EventGenerator;
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
+use OCP\Calendar\Exceptions\CalendarException;
+use OCP\Calendar\ICreateFromString;
+use OCP\Calendar\IManager;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IRequest;
 use OCP\Share\IShare;
+use Sabre\VObject\Component\VCalendar;
+use Sabre\VObject\UUIDUtil;
 
 class ApiController extends OCSController {
 	public function __construct(
 		string $appName,
 		IRequest $request,
 		protected IDBConnection $db,
+		private IManager $calendarManager,
+		private ?string $userId,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -104,22 +113,47 @@ class ApiController extends OCSController {
 			// Ignore
 		}
 
+		$delete = $this->db->getQueryBuilder();
+		$delete->delete('calendarobjects')->executeStatement();
+
+		$delete = $this->db->getQueryBuilder();
+		$delete->delete('calendarobjects_props')->executeStatement();
+
+
 		return new DataResponse();
 	}
 
 	public function ageChat(string $token, int $hours): DataResponse {
 		$query = $this->db->getQueryBuilder();
-		$query->select('id')
+		$query->select('id', 'last_activity', 'object_id')
 			->from('talk_rooms')
 			->where($query->expr()->eq('token', $query->createNamedParameter($token)));
 
 		$result = $query->executeQuery();
-		$roomId = (int)$result->fetchOne();
+		$room = $result->fetch();
 		$result->closeCursor();
 
-		if (!$roomId) {
+		if (!$room) {
 			return new DataResponse(null, Http::STATUS_NOT_FOUND);
 		}
+		$roomId = (int)$room['id'];
+
+		$lastActivity = new \DateTime($room['last_activity']);
+		$lastActivity->sub(new \DateInterval('PT' . $hours . 'H'));
+
+		$update = $this->db->getQueryBuilder();
+		$update->update('talk_rooms')
+			->set('last_activity', $update->createNamedParameter($lastActivity, IQueryBuilder::PARAM_DATETIME_MUTABLE))
+			->where($update->expr()->eq('id', $update->createNamedParameter($roomId)));
+
+		$eventConversationObjectId = explode('#', $room['object_id']);
+		if (count($eventConversationObjectId) === 2) {
+			$eventConversationObjectId[0] -= $hours * 3600;
+			$eventConversationObjectId[1] -= $hours * 3600;
+			$update->set('object_id', $update->createNamedParameter(implode('#', $eventConversationObjectId)));
+		}
+		$update->executeStatement();
+
 
 		$update = $this->db->getQueryBuilder();
 		$update->update('comments')
@@ -162,6 +196,112 @@ class ApiController extends OCSController {
 		}
 		$result->closeCursor();
 
+		return new DataResponse();
+	}
+
+	#[NoAdminRequired]
+	public function createDashboardEvents(string $name, string $location): DataResponse {
+		if ($this->userId === null) {
+			return new DataResponse(null, Http::STATUS_UNAUTHORIZED);
+		}
+
+		$calendar = null;
+		$calendars = $this->calendarManager->getCalendarsForPrincipal('principals/users/' . $this->userId);
+		foreach ($calendars as $c) {
+			if ($c instanceof ICreateFromString) {
+				$calendar = $c;
+			}
+		}
+
+		if ($calendar === null) {
+			return new DataResponse(null, Http::STATUS_NOT_FOUND);
+		}
+
+		$start = time();
+		$end = time() + 3600;
+		$events = EventGenerator::generateEvents($name, $location, $start, $end);
+
+		foreach ($events as $event) {
+			try {
+				/** @var ICreateFromString $calendar */
+				$calendar->createFromString(random_int(0, 10000) . '.ics', $event);
+			} catch (CalendarException) {
+				return new DataResponse(null, Http::STATUS_FORBIDDEN);
+			}
+		}
+
+		return new DataResponse();
+	}
+
+	#[NoAdminRequired]
+	public function createEventAndInviteParticipant(string $organizer, string $attendee): DataResponse {
+		if ($this->userId === null) {
+			return new DataResponse(null, Http::STATUS_UNAUTHORIZED);
+		}
+
+		$calendar = null;
+		// Create a calendar event with LOCATION and time via OCP
+		$calendars = $this->calendarManager->getCalendarsForPrincipal('principals/users/' . $this->userId);
+		foreach ($calendars as $c) {
+			if ($c instanceof ICreateFromString) {
+				$calendar = $c;
+			}
+		}
+
+		if ($calendar === null) {
+			return new DataResponse(null, Http::STATUS_NOT_FOUND);
+		}
+
+		$start = time();
+		$end = $start + 3600;
+		$startTime = (new \DateTime())->setTimestamp($start);
+		$endTime = (new \DateTime())->setTimestamp($end);
+		for ($i = 0; $i < 3; $i++) {
+			$interval = new \DateInterval('PT2H');
+			$startTime->add($interval);
+			$endTime->add($interval);
+
+			$vCalendar = new VCalendar();
+			$vevent = $vCalendar->createComponent('VEVENT');
+			$vevent->add('UID', UUIDUtil::getUUID());
+			$vevent->add('DTSTART');
+			$vevent->DTSTART->setDateTime($startTime);
+			$vevent->add('DTEND');
+			$vevent->DTEND->setDateTime($endTime);
+			$vevent->add('SUMMARY', 'Test');
+			$vevent->add('DESCRIPTION', 'Test');
+			$vevent->add('ORGANIZER', 'mailto:' . $organizer . '@example.tld', ['CN' => $organizer]);
+			$vevent->add('ATTENDEE', 'mailto:' . $attendee . '@example.tld', [
+				'CN' => $attendee,
+				'CUTYPE' => 'INDIVIDUAL',
+				'PARTSTAT' => 'NEEDS-ACTION',
+				'ROLE' => 'REQ-PARTICIPANT',
+				'RSVP' => 'TRUE'
+			]);
+			$vevent->add('STATUS', 'CONFIRMED');
+			$vCalendar->add($vevent);
+			if ($i === 1) {
+				$vevent->add('ATTACH', '/index.php/f/3226', [
+					'FMTTYPE' => 'application/pdf',
+					'FILENAME' => 'test.pdf',
+				]);
+			}
+			if ($i === 2) {
+				$vevent->add('ATTACH', '/index.php/f/3226', [
+					'FMTTYPE' => 'application/pdf',
+					'FILENAME' => 'test.pdf',
+					'X-NC-FILE-ID' => '3226',
+					'X-NC-HAS-PREVIEW' => 'false'
+				]);
+			}
+			$cal = $vCalendar->serialize();
+			try {
+				/** @var ICreateFromString $calendar */
+				$calendar->createFromString(random_int(0, 10000) . '.ics', $cal);
+			} catch (CalendarException) {
+				return new DataResponse(null, Http::STATUS_FORBIDDEN);
+			}
+		}
 		return new DataResponse();
 	}
 }

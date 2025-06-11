@@ -3,7 +3,10 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+import pinia from '../stores/pinia.ts'
 import { useSoundsStore } from '../stores/sounds.js'
+
+const soundsStore = useSoundsStore(pinia)
 
 export const Sounds = {
 	BLOCK_SOUND_TIMEOUT: 3000,
@@ -16,13 +19,11 @@ export const Sounds = {
 
 	_stopWaiting() {
 		console.debug('Stop waiting sound')
-		const soundsStore = useSoundsStore()
 		soundsStore.pauseAudio('wait')
 		clearInterval(this.backgroundInterval)
 	},
 
 	async playWaiting() {
-		const soundsStore = useSoundsStore()
 		if (!soundsStore.shouldPlaySounds) {
 			return
 		}
@@ -46,14 +47,12 @@ export const Sounds = {
 			console.debug('Playing waiting sound')
 			soundsStore.playAudio('wait')
 			this.playedWaiting++
-
 		}, 15000)
 	},
 
 	async playJoin(force, playWaitingSound) {
 		this._stopWaiting()
 
-		const soundsStore = useSoundsStore()
 		if (!soundsStore.shouldPlaySounds) {
 			return
 		}
@@ -89,7 +88,6 @@ export const Sounds = {
 	async playLeave(force, playWaitingSound) {
 		this._stopWaiting()
 
-		const soundsStore = useSoundsStore()
 		if (!soundsStore.shouldPlaySounds) {
 			return
 		}

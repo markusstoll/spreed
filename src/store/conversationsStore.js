@@ -1,54 +1,58 @@
+import { getCurrentUser } from '@nextcloud/auth'
+import { showError, showInfo, showSuccess, TOAST_PERMANENT_TIMEOUT } from '@nextcloud/dialogs'
+import { emit } from '@nextcloud/event-bus'
+import { t } from '@nextcloud/l10n'
 /**
  * SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import Vue from 'vue'
-
-import { getCurrentUser } from '@nextcloud/auth'
-import { showInfo, showSuccess, showError, TOAST_PERMANENT_TIMEOUT } from '@nextcloud/dialogs'
-import { emit } from '@nextcloud/event-bus'
-import { t } from '@nextcloud/l10n'
-
 import {
 	ATTENDEE,
 	CALL,
 	CONVERSATION,
+	MESSAGE,
 	PARTICIPANT,
 	WEBINAR,
 } from '../constants.ts'
 import {
+	deleteConversationAvatar,
 	setConversationAvatar,
 	setConversationEmojiAvatar,
-	deleteConversationAvatar,
 } from '../services/avatarService.ts'
 import BrowserStorage from '../services/BrowserStorage.js'
-import { hasTalkFeature, getTalkConfig } from '../services/CapabilitiesManager.ts'
+import { getTalkConfig, hasTalkFeature } from '../services/CapabilitiesManager.ts'
 import {
-	makeConversationPublic,
-	makeConversationPrivate,
-	setSIPEnabled,
-	setRecordingConsent,
+	addToFavorites,
+	archiveConversation,
+	changeListable,
 	changeLobbyState,
 	changeReadOnlyState,
-	changeListable,
-	createLegacyConversation,
 	createConversation,
-	addToFavorites,
-	removeFromFavorites,
-	archiveConversation,
-	unarchiveConversation,
-	fetchConversations,
-	fetchConversation,
-	setConversationName,
-	setConversationDescription,
+	createLegacyConversation,
 	deleteConversation,
-	setNotificationLevel,
-	setNotificationCalls,
-	setConversationPermissions,
+	fetchConversation,
+	fetchConversations,
+	makeConversationPrivate,
+	makeConversationPublic,
+	markAsImportant,
+	markAsInsensitive,
+	markAsSensitive,
+	markAsUnimportant,
+	removeFromFavorites,
 	setCallPermissions,
-	setMessageExpiration,
+	setConversationDescription,
+	setConversationName,
 	setConversationPassword,
+	setConversationPermissions,
 	setMentionPermissions,
+	setMessageExpiration,
+	setNotificationCalls,
+	setNotificationLevel,
+	setRecordingConsent,
+	setSIPEnabled,
+	unarchiveConversation,
+	unbindConversationFromObject,
 } from '../services/conversationsService.ts'
 import {
 	clearConversationHistory,
@@ -65,6 +69,7 @@ import { useChatExtrasStore } from '../stores/chatExtras.js'
 import { useFederationStore } from '../stores/federation.ts'
 import { useGroupwareStore } from '../stores/groupware.ts'
 import { useReactionsStore } from '../stores/reactions.js'
+import { useSharedItemsStore } from '../stores/sharedItems.js'
 import { useTalkHashStore } from '../stores/talkHash.js'
 import { convertToUnix } from '../utils/formattedTime.ts'
 import { getDisplayNamesList } from '../utils/getDisplayName.ts'
@@ -75,7 +80,7 @@ const supportConversationCreationAll = hasTalkFeature('local', 'conversation-cre
 
 const DUMMY_CONVERSATION = {
 	token: '',
-	displayName: '',
+	displayName: t('spreed', 'Loading …'),
 	isFavorite: false,
 	isArchived: false,
 	hasPassword: false,
@@ -114,20 +119,21 @@ function emitUserStatusUpdated(conversation) {
 const state = {
 	conversations: {
 	},
+	conversationsInitialised: false,
 }
 
 const getters = {
-	conversations: state => state.conversations,
+	conversations: (state) => state.conversations,
 	/**
 	 * List of all conversations sorted by isFavorite and lastActivity without breakout rooms
 	 *
 	 * @param {object} state state
 	 * @return {object[]} sorted conversations list
 	 */
-	conversationsList: state => {
+	conversationsList: (state) => {
 		return Object.values(state.conversations)
 			// Filter out breakout rooms
-			.filter(conversation => conversation.objectType !== CONVERSATION.OBJECT_TYPE.BREAKOUT_ROOM)
+			.filter((conversation) => conversation.objectType !== CONVERSATION.OBJECT_TYPE.BREAKOUT_ROOM)
 			// Sort by isFavorite and lastActivity
 			.sort((conversation1, conversation2) => {
 				if (conversation1.isFavorite !== conversation2.isFavorite) {
@@ -144,7 +150,7 @@ const getters = {
 	 * @return {object[]} sorted conversations list
 	 */
 	archivedConversationsList: (state, getters) => {
-		return getters.conversationsList.filter(conversation => conversation.isArchived)
+		return getters.conversationsList.filter((conversation) => conversation.isArchived)
 	},
 	/**
 	 * Get a conversation providing its token
@@ -152,13 +158,13 @@ const getters = {
 	 * @param {object} state state object
 	 * @return {Function} The callback function returning the conversation object
 	 */
-	conversation: state => token => state.conversations[token],
-	dummyConversation: state => Object.assign({}, DUMMY_CONVERSATION),
+	conversation: (state) => (token) => state.conversations[token],
+	dummyConversation: (state) => Object.assign({}, DUMMY_CONVERSATION),
 	isModerator: (state, getters, rootState, rootGetters) => {
 		const conversation = getters.conversation(rootGetters.getToken())
 		return conversation?.participantType === PARTICIPANT.TYPE.OWNER
-				|| conversation?.participantType === PARTICIPANT.TYPE.MODERATOR
-				|| conversation?.participantType === PARTICIPANT.TYPE.GUEST_MODERATOR
+			|| conversation?.participantType === PARTICIPANT.TYPE.MODERATOR
+			|| conversation?.participantType === PARTICIPANT.TYPE.GUEST_MODERATOR
 	},
 	isModeratorOrUser: (state, getters, rootState, rootGetters) => {
 		const conversation = getters.conversation(rootGetters.getToken())
@@ -170,14 +176,16 @@ const getters = {
 	isInLobby: (state, getters, rootState, rootGetters) => {
 		const conversation = getters.conversation(rootGetters.getToken())
 		return conversation
-				&& conversation.lobbyState === WEBINAR.LOBBY.NON_MODERATORS
-				&& !getters.isModerator
-				&& (conversation.permissions & PARTICIPANT.PERMISSIONS.LOBBY_IGNORE) === 0
+			&& conversation.lobbyState === WEBINAR.LOBBY.NON_MODERATORS
+			&& !getters.isModerator
+			&& (conversation.permissions & PARTICIPANT.PERMISSIONS.LOBBY_IGNORE) === 0
 	},
 	getConversationForUser: (state, getters) => {
 		return (userId) => getters.conversationsList
 			.find((conversation) => conversation.type === CONVERSATION.TYPE.ONE_TO_ONE && conversation.name === userId)
 	},
+
+	conversationsInitialised: (state) => state.conversationsInitialised,
 }
 
 const mutations = {
@@ -266,6 +274,10 @@ const mutations = {
 	setConversationHasPassword(state, { token, hasPassword }) {
 		Vue.set(state.conversations[token], 'hasPassword', hasPassword)
 	},
+
+	setConversationsInitialised(state, value) {
+		state.conversationsInitialised = value
+	},
 }
 
 const actions = {
@@ -311,6 +323,7 @@ const actions = {
 				actorId: conversation.actorId, // FIXME check public share page handling
 				userId: currentUser ? currentUser.uid : '',
 				displayName: currentUser && currentUser.displayName ? currentUser.displayName : '', // TODO guest name from localstore?
+				status: '',
 			},
 		})
 	},
@@ -378,6 +391,8 @@ const actions = {
 		groupwareStore.purgeGroupwareStore(token)
 		const reactionsStore = useReactionsStore()
 		reactionsStore.purgeReactionsStore(token)
+		const sharedItemsStore = useSharedItemsStore()
+		sharedItemsStore.purgeSharedItemsStore(token)
 		context.dispatch('purgeMessagesStore', token)
 		context.commit('deleteConversation', token)
 		context.dispatch('purgeParticipantsStore', token)
@@ -401,9 +416,7 @@ const actions = {
 		const breakoutRoomsStore = useBreakoutRoomsStore()
 
 		const currentConversations = context.state.conversations
-		const newConversations = Object.fromEntries(
-			conversations.map((conversation) => [conversation.token, conversation])
-		)
+		const newConversations = Object.fromEntries(conversations.map((conversation) => [conversation.token, conversation]))
 
 		// Remove conversations that are not in the new list
 		if (withRemoving) {
@@ -450,6 +463,8 @@ const actions = {
 			conversations: JSON.parse(cachedConversations),
 			withRemoving: true,
 		})
+
+		context.commit('setConversationsInitialised', true)
 
 		console.debug('Conversations have been restored from BrowserStorage')
 	},
@@ -503,6 +518,8 @@ const actions = {
 			chatExtrasStore.removeParentIdToReply(token)
 			const reactionsStore = useReactionsStore()
 			reactionsStore.purgeReactionsStore(token)
+			const sharedItemsStore = useSharedItemsStore()
+			sharedItemsStore.purgeSharedItemsStore(token)
 			context.dispatch('purgeMessagesStore', token)
 			return response
 		} catch (error) {
@@ -570,6 +587,36 @@ const actions = {
 		}
 	},
 
+	async toggleImportant(context, { token, isImportant }) {
+		if (!context.getters.conversations[token]) {
+			return
+		}
+
+		try {
+			const response = isImportant
+				? await markAsImportant(token)
+				: await markAsUnimportant(token)
+			context.commit('addConversation', response.data.ocs.data)
+		} catch (error) {
+			console.error('Error while changing the conversation important status: ', error)
+		}
+	},
+
+	async toggleSensitive(context, { token, isSensitive }) {
+		if (!context.getters.conversations[token]) {
+			return
+		}
+
+		try {
+			const response = isSensitive
+				? await markAsSensitive(token)
+				: await markAsInsensitive(token)
+			context.commit('addConversation', response.data.ocs.data)
+		} catch (error) {
+			console.error('Error while changing the conversation sensitive status: ', error)
+		}
+	},
+
 	async toggleLobby({ commit, getters }, { token, enableLobby }) {
 		if (!getters.conversations[token]) {
 			return
@@ -580,13 +627,20 @@ const actions = {
 			if (enableLobby) {
 				await changeLobbyState(token, WEBINAR.LOBBY.NON_MODERATORS)
 				conversation.lobbyState = WEBINAR.LOBBY.NON_MODERATORS
+				showSuccess(t('spreed', 'You restricted the conversation to moderators'))
 			} else {
 				await changeLobbyState(token, WEBINAR.LOBBY.NONE)
 				conversation.lobbyState = WEBINAR.LOBBY.NONE
+				showSuccess(t('spreed', 'You opened the conversation to everyone'))
 			}
 			commit('addConversation', conversation)
 		} catch (error) {
-			console.error('Error while updating webinar lobby: ', error)
+			console.error('Error occurred while updating webinar lobby: ', error)
+			if (enableLobby) {
+				showError(t('spreed', 'Error occurred when restricting the conversation to moderator'))
+			} else {
+				showError(t('spreed', 'Error occurred when opening the conversation to everyone'))
+			}
 		}
 	},
 
@@ -622,7 +676,6 @@ const actions = {
 			} else {
 				showSuccess(t('spreed', 'Conversation password has been removed'))
 			}
-
 		} catch (error) {
 			console.error('Error while setting a password for conversation: ', error)
 			if (error?.response?.data?.ocs?.data?.message) {
@@ -630,7 +683,6 @@ const actions = {
 			} else {
 				showError(t('spreed', 'Error occurred while saving conversation password'))
 			}
-
 		}
 	},
 
@@ -757,13 +809,13 @@ const actions = {
 		 * 3. It's not a deletion of a message
 		 */
 		if ((lastMessage.actorType !== ATTENDEE.ACTOR_TYPE.BOTS
-				|| lastMessage.actorId === ATTENDEE.CHANGELOG_BOT_ID)
-			&& lastMessage.systemMessage !== 'reaction'
-			&& lastMessage.systemMessage !== 'poll_voted'
-			&& lastMessage.systemMessage !== 'reaction_deleted'
-			&& lastMessage.systemMessage !== 'reaction_revoked'
-			&& lastMessage.systemMessage !== 'message_deleted'
-			&& lastMessage.systemMessage !== 'message_edited') {
+			|| lastMessage.actorId === ATTENDEE.CHANGELOG_BOT_ID)
+		&& lastMessage.systemMessage !== 'reaction'
+		&& lastMessage.systemMessage !== 'poll_voted'
+		&& lastMessage.systemMessage !== 'reaction_deleted'
+		&& lastMessage.systemMessage !== 'reaction_revoked'
+		&& lastMessage.systemMessage !== 'message_deleted'
+		&& lastMessage.systemMessage !== 'message_edited') {
 			commit('updateConversationLastMessage', { token, lastMessage })
 		}
 	},
@@ -802,7 +854,7 @@ const actions = {
 			// Inaccurate but best effort from here on:
 			expirationTimestamp: 0,
 			isReplyable: true,
-			messageType: 'comment',
+			messageType: MESSAGE.TYPE.COMMENT,
 			reactions: {},
 			referenceId: '',
 			systemMessage: '',
@@ -871,7 +923,7 @@ const actions = {
 			message: notification.subjectRich,
 			messageParameters: notification.subjectRichParameters,
 			timestamp: activeSince,
-			messageType: 'system',
+			messageType: MESSAGE.TYPE.SYSTEM,
 			systemMessage: 'call_started',
 			expirationTimestamp: 0,
 			isReplyable: false,
@@ -895,7 +947,7 @@ const actions = {
 				callFlag: hasCall ? PARTICIPANT.CALL_FLAG.IN_CALL : PARTICIPANT.CALL_FLAG.DISCONNECTED,
 				lastActivity,
 				callStartTime: hasCall ? lastActivity : 0,
-			}
+			},
 		})
 	},
 
@@ -915,7 +967,7 @@ const actions = {
 		}
 	},
 
-	async fetchConversations({ dispatch }, { modifiedSince, includeLastMessage = 1 }) {
+	async fetchConversations({ dispatch, commit }, { modifiedSince, includeLastMessage = 1 }) {
 		const talkHashStore = useTalkHashStore()
 		const federationStore = useFederationStore()
 		try {
@@ -943,6 +995,7 @@ const actions = {
 				invites: response.headers['x-nextcloud-talk-federation-invites'],
 				withRemoving: modifiedSince === 0,
 			})
+			commit('setConversationsInitialised', true)
 			return response
 		} catch (error) {
 			if (error?.response) {
@@ -981,13 +1034,13 @@ const actions = {
 		try {
 			const response = supportConversationCreationAll
 				? await createConversation({
-					roomType: CONVERSATION.TYPE.ONE_TO_ONE,
-					participants: { users: [actorId] },
-				})
+						roomType: CONVERSATION.TYPE.ONE_TO_ONE,
+						participants: { users: [actorId] },
+					})
 				: await createLegacyConversation({
-					roomType: CONVERSATION.TYPE.ONE_TO_ONE,
-					invite: actorId,
-				})
+						roomType: CONVERSATION.TYPE.ONE_TO_ONE,
+						invite: actorId,
+					})
 			await context.dispatch('addConversation', response.data.ocs.data)
 			return response.data.ocs.data
 		} catch (error) {
@@ -1002,16 +1055,15 @@ const actions = {
 	 * @param {object} context default store context
 	 * @param {object} payload action payload
 	 * @param {string} payload.token one-to-one conversation token
-	 * @param {Array} payload.newParticipants selected participants to be added
+	 * @param {Array} payload.newParticipants selected participants to be added (should include second participant form original conversation)
 	 */
 	async extendOneToOneConversation(context, { token, newParticipants }) {
 		const conversation = context.getters.conversation(token)
 		const participants = [
 			{ id: conversation.actorId, source: conversation.actorType, label: context.rootGetters.getDisplayName() },
-			{ id: conversation.name, source: ATTENDEE.ACTOR_TYPE.USERS, label: conversation.displayName },
 			...newParticipants,
 		]
-		const roomName = getDisplayNamesList(participants.map(participant => participant.label), CONVERSATION.MAX_NAME_LENGTH)
+		const roomName = getDisplayNamesList(participants.map((participant) => participant.label), CONVERSATION.MAX_NAME_LENGTH)
 
 		return context.dispatch('createGroupConversation', {
 			roomName,
@@ -1056,7 +1108,7 @@ const actions = {
 		try {
 			let response
 			if (supportConversationCreationAll) {
-				const participantsMap = participants.reduce((map, participant) => {
+				const participantsMap = participants?.reduce((map, participant) => {
 					// FIXME type Record<'users'|'federated_users'|'groups'|'emails'|'phones'|'teams', string[]>
 					const source = participant.source === 'circles' ? 'teams' : participant.source
 					if (!['users', 'federated_users', 'groups', 'emails', 'phones', 'teams'].includes(source)) {
@@ -1229,6 +1281,17 @@ const actions = {
 			showSuccess(t('spreed', 'Conversation picture deleted'))
 		} catch (error) {
 			showError(t('spreed', 'Could not delete the conversation picture'))
+		}
+	},
+
+	async unbindConversationFromObject(context, { token }) {
+		try {
+			const response = await unbindConversationFromObject(token)
+			const conversation = response.data.ocs.data
+			context.commit('addConversation', conversation)
+		} catch (error) {
+			console.error('Error while unbinding conversation from object: ', error)
+			showError(t('spreed', 'Could not remove the automatic expiration'))
 		}
 	},
 }

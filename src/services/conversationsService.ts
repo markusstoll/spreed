@@ -3,56 +3,60 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import axios from '@nextcloud/axios'
-import { generateOcsUrl } from '@nextcloud/router'
-
-import { hasTalkFeature } from './CapabilitiesManager.ts'
-import { ATTENDEE, CONVERSATION } from '../constants.ts'
 import type {
-	getAllConversationsParams,
-	getAllConversationsResponse,
-	getSingleConversationResponse,
-	getNoteToSelfConversationResponse,
-	getListedConversationsParams,
-	getListedConversationsResponse,
+	addConversationToFavoritesResponse,
+	archiveConversationResponse,
 	createConversationParams,
 	createConversationResponse,
-	legacyCreateConversationParams,
 	deleteConversationResponse,
-	setConversationNameParams,
-	setConversationNameResponse,
-	setConversationPasswordParams,
-	setConversationPasswordResponse,
-	setConversationDescriptionParams,
-	setConversationDescriptionResponse,
-	addConversationToFavoritesResponse,
-	removeConversationFromFavoritesResponse,
-	archiveConversationResponse,
-	unarchiveConversationResponse,
-	setConversationNotifyLevelParams,
-	setConversationNotifyLevelResponse,
-	setConversationNotifyCallsParams,
-	setConversationNotifyCallsResponse,
+	getAllConversationsParams,
+	getAllConversationsResponse,
+	getListedConversationsParams,
+	getListedConversationsResponse,
+	getNoteToSelfConversationResponse,
+	getSingleConversationResponse,
+	legacyCreateConversationParams,
+	makeConversationPrivateResponse,
 	makeConversationPublicParams,
 	makeConversationPublicResponse,
-	makeConversationPrivateResponse,
-	setConversationSipParams,
-	setConversationSipResponse,
-	setConversationLobbyParams,
-	setConversationLobbyResponse,
-	setConversationRecordingParams,
-	setConversationRecordingResponse,
-	setConversationReadonlyParams,
-	setConversationReadonlyResponse,
+	markConversationAsImportantResponse,
+	markConversationAsInsensitiveResponse,
+	markConversationAsSensitiveResponse,
+	markConversationAsUnimportantResponse,
+	removeConversationFromFavoritesResponse,
+	setConversationDescriptionParams,
+	setConversationDescriptionResponse,
 	setConversationListableParams,
 	setConversationListableResponse,
+	setConversationLobbyParams,
+	setConversationLobbyResponse,
 	setConversationMentionsPermissionsParams,
 	setConversationMentionsPermissionsResponse,
-	setConversationPermissionsParams,
-	setConversationPermissionsResponse,
 	setConversationMessageExpirationParams,
 	setConversationMessageExpirationResponse,
+	setConversationNameParams,
+	setConversationNameResponse,
+	setConversationNotifyCallsParams,
+	setConversationNotifyCallsResponse,
+	setConversationNotifyLevelParams,
+	setConversationNotifyLevelResponse,
+	setConversationPasswordParams,
+	setConversationPasswordResponse,
+	setConversationPermissionsParams,
+	setConversationPermissionsResponse,
+	setConversationReadonlyParams,
+	setConversationReadonlyResponse,
+	setConversationRecordingParams,
+	setConversationRecordingResponse,
+	setConversationSipParams,
+	setConversationSipResponse,
+	unarchiveConversationResponse,
+	unbindConversationFromObjectResponse,
 } from '../types/index.ts'
+
+import axios from '@nextcloud/axios'
+import { generateOcsUrl } from '@nextcloud/router'
+import { hasTalkFeature } from './CapabilitiesManager.ts'
 
 /**
  * Fetches all conversations from the server.
@@ -168,6 +172,14 @@ async function deleteConversation(token: string): deleteConversationResponse {
 }
 
 /**
+ * Detach a conversation from an object and it becomes a "normal" conversation.
+ * @param token The token of the conversation to be deleted.
+ */
+async function unbindConversationFromObject(token: string): unbindConversationFromObjectResponse {
+	return axios.delete(generateOcsUrl('apps/spreed/api/v4/room/{token}/object', { token }))
+}
+
+/**
  * Add a conversation to the favorites
  * @param token The token of the conversation to be favorites
  */
@@ -181,6 +193,38 @@ async function addToFavorites(token: string): addConversationToFavoritesResponse
  */
 async function removeFromFavorites(token: string): removeConversationFromFavoritesResponse {
 	return axios.delete(generateOcsUrl('apps/spreed/api/v4/room/{token}/favorite', { token }))
+}
+
+/**
+ * Mark a conversation as important
+ * @param token The conversation token of the conversation to be favorites
+ */
+async function markAsImportant(token: string): markConversationAsImportantResponse {
+	return axios.post(generateOcsUrl('apps/spreed/api/v4/room/{token}/important', { token }))
+}
+
+/**
+ * Unmark an important conversation
+ * @param token The token of the conversation to be removed from favorites
+ */
+async function markAsUnimportant(token: string): markConversationAsUnimportantResponse {
+	return axios.delete(generateOcsUrl('apps/spreed/api/v4/room/{token}/important', { token }))
+}
+
+/**
+ * Mark a conversation as important
+ * @param token The token of the conversation to be favorites
+ */
+async function markAsSensitive(token: string): markConversationAsSensitiveResponse {
+	return axios.post(generateOcsUrl('apps/spreed/api/v4/room/{token}/sensitive', { token }))
+}
+
+/**
+ * Remove a conversation from the favorites
+ * @param token The token of the conversation to be removed from favorites
+ */
+async function markAsInsensitive(token: string): markConversationAsInsensitiveResponse {
+	return axios.delete(generateOcsUrl('apps/spreed/api/v4/room/{token}/sensitive', { token }))
 }
 
 /**
@@ -344,31 +388,36 @@ async function setMessageExpiration(token: string, seconds: setConversationMessa
 }
 
 export {
-	fetchConversations,
-	fetchConversation,
-	fetchNoteToSelfConversation,
-	searchListedConversations,
-	createLegacyConversation,
-	createConversation,
-	deleteConversation,
 	addToFavorites,
-	removeFromFavorites,
 	archiveConversation,
-	unarchiveConversation,
-	setNotificationLevel,
-	setNotificationCalls,
-	makeConversationPublic,
-	makeConversationPrivate,
-	setSIPEnabled,
-	setRecordingConsent,
+	changeListable,
 	changeLobbyState,
 	changeReadOnlyState,
-	changeListable,
-	setConversationPassword,
-	setConversationName,
-	setConversationDescription,
-	setConversationPermissions,
+	createConversation,
+	createLegacyConversation,
+	deleteConversation,
+	fetchConversation,
+	fetchConversations,
+	fetchNoteToSelfConversation,
+	makeConversationPrivate,
+	makeConversationPublic,
+	markAsImportant,
+	markAsInsensitive,
+	markAsSensitive,
+	markAsUnimportant,
+	removeFromFavorites,
+	searchListedConversations,
 	setCallPermissions,
-	setMessageExpiration,
+	setConversationDescription,
+	setConversationName,
+	setConversationPassword,
+	setConversationPermissions,
 	setMentionPermissions,
+	setMessageExpiration,
+	setNotificationCalls,
+	setNotificationLevel,
+	setRecordingConsent,
+	setSIPEnabled,
+	unarchiveConversation,
+	unbindConversationFromObject,
 }

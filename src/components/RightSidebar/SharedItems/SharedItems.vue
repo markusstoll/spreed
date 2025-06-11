@@ -4,7 +4,7 @@
 -->
 
 <template>
-	<div class="shared-items" :class="{'shared-items__list' : hasListLayout}">
+	<div class="shared-items" :class="{ 'shared-items__list': hasListLayout }">
 		<template v-for="item in itemsToDisplay">
 			<div v-if="isLocation" :key="item.id" class="shared-items__location">
 				<Location wide v-bind="item.messageParameters.object" />
@@ -50,7 +50,6 @@ import DeckCard from '../../MessagesList/MessagesGroup/Message/MessagePart/DeckC
 import FilePreview from '../../MessagesList/MessagesGroup/Message/MessagePart/FilePreview.vue'
 import Location from '../../MessagesList/MessagesGroup/Message/MessagePart/Location.vue'
 import Poll from '../../MessagesList/MessagesGroup/Message/MessagePart/Poll.vue'
-
 import { SHARED_ITEM } from '../../../constants.ts'
 
 export default {
@@ -96,21 +95,27 @@ export default {
 		itemsToDisplay() {
 			return Object.values(this.items).reverse().slice(0, this.limit)
 		},
+
 		isLocation() {
 			return this.type === SHARED_ITEM.TYPES.LOCATION
 		},
+
 		isDeckCard() {
 			return this.type === SHARED_ITEM.TYPES.DECK_CARD
 		},
+
 		isPoll() {
 			return this.type === SHARED_ITEM.TYPES.POLL
 		},
+
 		isOther() {
 			return this.type === SHARED_ITEM.TYPES.OTHER
 		},
+
 		isMedia() {
 			return this.type === SHARED_ITEM.TYPES.MEDIA
 		},
+
 		hasListLayout() {
 			return !this.isMedia && (this.tabView || (!this.isLocation && !this.isDeckCard && !this.isPoll))
 		},

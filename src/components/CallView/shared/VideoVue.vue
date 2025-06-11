@@ -47,7 +47,7 @@
 		</TransitionWrapper>
 		<TransitionWrapper name="fade">
 			<div v-if="showBackgroundAndAvatar"
-				:key="'backgroundAvatar'"
+				key="backgroundAvatar"
 				class="avatar-container">
 				<VideoBackground :display-name="displayName" :user="participantUserId" />
 				<AvatarWrapper :id="participantUserId"
@@ -62,7 +62,7 @@
 		</TransitionWrapper>
 		<TransitionWrapper name="fade">
 			<div v-if="showPlaceholderForPromoted"
-				:key="'placeholderForPromoted'"
+				key="placeholderForPromoted"
 				class="placeholder-for-promoted">
 				<AccountCircle v-if="isPromoted || isSelected" fill-color="#FFFFFF" :size="64" />
 			</div>
@@ -82,23 +82,18 @@
 </template>
 
 <script>
+import { t } from '@nextcloud/l10n'
 import Hex from 'crypto-js/enc-hex.js'
 import SHA1 from 'crypto-js/sha1.js'
 import { inject, ref } from 'vue'
-
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import AccountCircle from 'vue-material-design-icons/AccountCircle.vue'
 import AccountOff from 'vue-material-design-icons/AccountOff.vue'
-
-import { t } from '@nextcloud/l10n'
-
-import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
-
+import AvatarWrapper from '../../AvatarWrapper/AvatarWrapper.vue'
+import TransitionWrapper from '../../UIShared/TransitionWrapper.vue'
 import Screen from './Screen.vue'
 import VideoBackground from './VideoBackground.vue'
 import VideoBottomBar from './VideoBottomBar.vue'
-import AvatarWrapper from '../../AvatarWrapper/AvatarWrapper.vue'
-import TransitionWrapper from '../../UIShared/TransitionWrapper.vue'
-
 import { ATTENDEE, AVATAR } from '../../../constants.ts'
 import { EventBus } from '../../../services/EventBus.ts'
 import { useCallViewStore } from '../../../stores/callView.ts'
@@ -129,53 +124,65 @@ export default {
 			type: String,
 			required: true,
 		},
+
 		placeholderForPromoted: {
 			type: Boolean,
 			default: false,
 		},
+
 		model: {
 			type: Object,
 			required: true,
 		},
+
 		sharedData: {
 			type: Object,
 			required: true,
 		},
+
 		showVideoOverlay: {
 			type: Boolean,
 			default: true,
 		},
+
 		isGrid: {
 			type: Boolean,
 			default: false,
 		},
+
 		fitVideo: {
 			type: Boolean,
 			default: false,
 		},
+
 		isPresenterOverlay: {
 			type: Boolean,
 			default: false,
 		},
+
 		isBig: {
 			type: Boolean,
 			default: false,
 		},
+
 		// True if this video component is used in the promoted view's video stripe
 		isStripe: {
 			type: Boolean,
 			default: false,
 		},
+
 		// The current promoted participant
 		isPromoted: {
 			type: Boolean,
 			default: false,
 		},
+
 		// Is the current selected participant
 		isSelected: {
 			type: Boolean,
 			default: false,
 		},
+
 		// True when this component is used as main video in the sidebar
 		isSidebar: {
 			type: Boolean,
@@ -317,13 +324,13 @@ export default {
 				'video-container-grid': this.isGrid,
 				'video-container-big': this.isBig,
 				'one-to-one': this.isOneToOne,
-				'presenter-overlay': this.isPresenterOverlay
+				'presenter-overlay': this.isPresenterOverlay,
 			}
 		},
 
 		videoWrapperClass() {
 			return {
-				'presenter-overlay': this.isPresenterOverlay
+				'presenter-overlay': this.isPresenterOverlay,
 			}
 		},
 
@@ -500,7 +507,6 @@ export default {
 				} else {
 					return this.hasVideo
 				}
-
 			}
 		},
 
@@ -516,7 +522,6 @@ export default {
 			} else {
 				return false
 			}
-
 		},
 
 		showBackgroundAndAvatar() {
@@ -578,7 +583,6 @@ export default {
 	methods: {
 		t,
 		_setStream(stream) {
-
 			if (!stream) {
 				// Do not clear the srcObject of the video element, just leave
 				// the previous stream as a frozen image.
@@ -621,7 +625,7 @@ export default {
 
 		handleHoverEvent(value) {
 			this.$emit('force-promote-video', value ? this.model : null)
-		}
+		},
 	},
 
 }

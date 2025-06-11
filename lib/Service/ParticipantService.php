@@ -345,6 +345,26 @@ class ParticipantService {
 	}
 
 	/**
+	 * @param Participant $participant
+	 */
+	public function markConversationAsSensitive(Participant $participant): void {
+		$attendee = $participant->getAttendee();
+		$attendee->setSensitive(true);
+		$attendee->setLastAttendeeActivity($this->timeFactory->getTime());
+		$this->attendeeMapper->update($attendee);
+	}
+
+	/**
+	 * @param Participant $participant
+	 */
+	public function markConversationAsInsensitive(Participant $participant): void {
+		$attendee = $participant->getAttendee();
+		$attendee->setSensitive(false);
+		$attendee->setLastAttendeeActivity($this->timeFactory->getTime());
+		$this->attendeeMapper->update($attendee);
+	}
+
+	/**
 	 * @param RoomService $roomService
 	 * @param Room $room
 	 * @param IUser $user
@@ -445,7 +465,7 @@ class ParticipantService {
 	 * @throws InvalidPasswordException
 	 * @throws UnauthorizedException
 	 */
-	public function joinRoomAsNewGuest(RoomService $roomService, Room $room, string $password, bool $passedPasswordProtection = false, ?Participant $previousParticipant = null): Participant {
+	public function joinRoomAsNewGuest(RoomService $roomService, Room $room, string $password, bool $passedPasswordProtection = false, ?Participant $previousParticipant = null, ?string $displayName = null): Participant {
 		$event = new BeforeGuestJoinedRoomEvent($room, $password, $passedPasswordProtection);
 		$this->dispatcher->dispatchTyped($event);
 
@@ -474,6 +494,11 @@ class ParticipantService {
 			$attendee->setParticipantType(Participant::GUEST);
 			$attendee->setPermissions(Attendee::PERMISSIONS_DEFAULT);
 			$attendee->setLastReadMessage($lastMessage);
+
+			if ($displayName !== null && $displayName !== '') {
+				$attendee->setDisplayName($displayName);
+			}
+
 			$this->attendeeMapper->insert($attendee);
 
 			$attendeeEvent = new AttendeesAddedEvent($room, [$attendee]);

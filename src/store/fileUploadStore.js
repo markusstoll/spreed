@@ -3,16 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import Vue from 'vue'
-
 import { showError } from '@nextcloud/dialogs'
 import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
 import moment from '@nextcloud/moment'
 import { getUploader } from '@nextcloud/upload'
-
+import Vue from 'vue'
 import { useTemporaryMessage } from '../composables/useTemporaryMessage.ts'
-import { SHARED_ITEM } from '../constants.ts'
+import { MESSAGE, SHARED_ITEM } from '../constants.ts'
 import { getDavClient } from '../services/DavClient.js'
 import { EventBus } from '../services/EventBus.ts'
 import {
@@ -22,10 +20,10 @@ import {
 import { setAttachmentFolder } from '../services/settingsService.ts'
 import { useChatExtrasStore } from '../stores/chatExtras.js'
 import {
-	hasDuplicateUploadNames,
 	findUniquePath,
 	getFileExtension,
 	getFileNamePrompt,
+	hasDuplicateUploadNames,
 	separateDuplicateUploads,
 } from '../utils/fileUpload.js'
 import { parseUploadError } from '../utils/propfindErrorParse.ts'
@@ -127,7 +125,7 @@ const mutations = {
 			status: 'initialised',
 			totalSize: file.size,
 			temporaryMessage,
-		 })
+		})
 		if (localUrl) {
 			Vue.set(state.localUrls, temporaryMessage.referenceId, localUrl)
 		}
@@ -258,7 +256,7 @@ const actions = {
 				index,
 				file,
 				localUrl,
-				messageType: isVoiceMessage ? 'voice-message' : 'comment',
+				messageType: isVoiceMessage ? MESSAGE.TYPE.VOICE_MESSAGE : MESSAGE.TYPE.COMMENT,
 			})
 			console.debug('temporarymessage: ', temporaryMessage, 'uploadId', uploadId)
 			context.commit('addFileToBeUploaded', { file, temporaryMessage, localUrl, token })
@@ -452,7 +450,7 @@ const actions = {
 			const { id, messageType, parent, referenceId } = shareableFile.temporaryMessage || {}
 
 			const talkMetaData = JSON.stringify(Object.assign(
-				messageType !== 'comment' ? { messageType } : {},
+				messageType !== MESSAGE.TYPE.COMMENT ? { messageType } : {},
 				caption && index === lastIndex ? { caption } : {},
 				options?.silent ? { silent: options.silent } : {},
 				parent ? { replyTo: parent.id } : {},

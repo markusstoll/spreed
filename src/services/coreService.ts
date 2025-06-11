@@ -3,18 +3,19 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import axios from '@nextcloud/axios'
-import { generateOcsUrl } from '@nextcloud/router'
-
-import { getTalkConfig, hasTalkFeature } from './CapabilitiesManager.ts'
-import { SHARE } from '../constants.ts'
 import type {
 	AutocompleteParams,
 	AutocompleteResponse,
+	SearchMessagePayload,
 	TaskProcessingResponse,
 	UnifiedSearchResponse,
-	SearchMessagePayload,
+	UserProfileResponse,
 } from '../types/index.ts'
+
+import axios from '@nextcloud/axios'
+import { generateOcsUrl } from '@nextcloud/router'
+import { SHARE } from '../constants.ts'
+import { getTalkConfig, hasTalkFeature } from './CapabilitiesManager.ts'
 
 const canInviteToFederation = hasTalkFeature('local', 'federation-v1')
 	&& getTalkConfig('local', 'federation', 'enabled')
@@ -53,12 +54,12 @@ const autocompleteQuery = async function({
 	const shareTypes: ShareType[] = onlyUsers
 		? [SHARE.TYPE.USER]
 		: [
-			SHARE.TYPE.USER,
-			SHARE.TYPE.GROUP,
-			SHARE.TYPE.CIRCLE,
-			...(token !== 'new' ? [SHARE.TYPE.EMAIL] : []),
-			...(canInviteToFederation ? [SHARE.TYPE.REMOTE] : []),
-		]
+				SHARE.TYPE.USER,
+				SHARE.TYPE.GROUP,
+				SHARE.TYPE.CIRCLE,
+				...(token !== 'new' ? [SHARE.TYPE.EMAIL] : []),
+				...(canInviteToFederation ? [SHARE.TYPE.REMOTE] : []),
+			]
 
 	return axios.get(generateOcsUrl('core/autocomplete/get'), {
 		...options,
@@ -69,6 +70,10 @@ const autocompleteQuery = async function({
 			shareTypes: shareTypes.concat(forceTypes),
 		} as AutocompleteParams,
 	})
+}
+
+const getUserProfile = async function(userId: string, options?: object): UserProfileResponse {
+	return axios.get(generateOcsUrl('profile/{userId}', { userId }), options)
 }
 
 const getTaskById = async function(id: number, options?: object): TaskProcessingResponse {
@@ -88,7 +93,8 @@ const searchMessages = async function(params: SearchMessagePayload, options: obj
 
 export {
 	autocompleteQuery,
-	getTaskById,
 	deleteTaskById,
+	getTaskById,
+	getUserProfile,
 	searchMessages,
 }

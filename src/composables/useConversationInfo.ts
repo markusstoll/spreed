@@ -3,21 +3,24 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { toRef } from '@vueuse/core'
-import { computed, ref } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
+import type { ChatMessage, Conversation } from '../types/index.ts'
 
 import { t } from '@nextcloud/l10n'
-
-import { ATTENDEE, CONVERSATION, PARTICIPANT } from '../constants.ts'
-import type { Conversation } from '../types/index.ts'
+import moment from '@nextcloud/moment'
+import { toRef } from '@vueuse/core'
+import { computed, ref } from 'vue'
+import { ATTENDEE, CONVERSATION, MESSAGE, PARTICIPANT } from '../constants.ts'
+import { getEventTimeRange } from '../utils/conversation.ts'
+import { futureRelativeTime, ONE_DAY_IN_MS } from '../utils/formattedTime.ts'
 import { getMessageIcon } from '../utils/getMessageIcon.ts'
+import { useStore } from './useStore.js'
 
 type Payload = {
-	item: Ref<Conversation> | ComputedRef<Conversation>,
-	isSearchResult: Ref<boolean | null>,
-	exposeMessagesRef: Ref<boolean | null>,
-	exposeDescriptionRef: Ref<boolean | null>,
+	item: Ref<Conversation> | ComputedRef<Conversation>
+	isSearchResult: Ref<boolean | null>
+	exposeMessagesRef: Ref<boolean | null>
+	exposeDescriptionRef: Ref<boolean | null>
 }
 
 const TITLE_MAX_LENGTH = 1000
@@ -116,6 +119,33 @@ export function useConversationInfo({
 			}
 		}
 
+		// This is for event conversations where no messages from participants are shown
+		const startTime = getEventTimeRange(item.value).start
+		if (item.value.objectType === CONVERSATION.OBJECT_TYPE.EVENT
+			&& startTime && startTime > Date.now()) {
+			// Check if there is a message to display
+			const store = useStore()
+			const hasHumanMessage = item.value.unreadMessages !== 0 || store.getters.messagesList(item.value.token).some((message: ChatMessage) => {
+				return message.systemMessage === '' && message.messageType !== MESSAGE.TYPE.COMMENT_DELETED
+			})
+
+			if (!hasHumanMessage && startTime - Date.now() < ONE_DAY_IN_MS) {
+				return {
+					actor: null,
+					icon: null,
+					message: futureRelativeTime(startTime),
+					title: futureRelativeTime(startTime),
+				}
+			} else if (!hasHumanMessage) {
+				return {
+					actor: null,
+					icon: null,
+					message: moment(startTime).calendar(),
+					title: moment(startTime).calendar(),
+				}
+			}
+		}
+
 		if (!exposeMessages) {
 			return {
 				actor: null,
@@ -185,8 +215,7 @@ export function useConversationInfo({
 		return item.value.readOnly === CONVERSATION.STATE.READ_ONLY
 	})
 
-	const isConversationModifiable = computed(() =>
-		!isConversationReadOnly.value
+	const isConversationModifiable = computed(() => !isConversationReadOnly.value
 		&& item.value.participantType !== PARTICIPANT.TYPE.GUEST
 		&& item.value.participantType !== PARTICIPANT.TYPE.GUEST_MODERATOR)
 

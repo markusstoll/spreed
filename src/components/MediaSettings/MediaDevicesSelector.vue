@@ -5,26 +5,24 @@
 
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import { computed } from 'vue'
 
+import { t } from '@nextcloud/l10n'
+import { computed } from 'vue'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 import IconMicrophone from 'vue-material-design-icons/Microphone.vue'
 import IconRefresh from 'vue-material-design-icons/Refresh.vue'
 import IconVideo from 'vue-material-design-icons/Video.vue'
 import IconVolumeHigh from 'vue-material-design-icons/VolumeHigh.vue'
 
-import { t } from '@nextcloud/l10n'
-
-import NcButton from '@nextcloud/vue/components/NcButton'
-import NcSelect from '@nextcloud/vue/components/NcSelect'
-
 type NcSelectOption = { id: string | null, label: string }
 type MediaDeviceInfoWithFallbackLabel = MediaDeviceInfo & { fallbackLabel: string }
 
 const props = withDefaults(defineProps<{
-	kind: 'audioinput' | 'audiooutput' | 'videoinput',
-	devices: MediaDeviceInfoWithFallbackLabel[],
-	deviceId?: string | null,
-	enabled?: boolean,
+	kind: 'audioinput' | 'audiooutput' | 'videoinput'
+	devices: MediaDeviceInfoWithFallbackLabel[]
+	deviceId?: string | null
+	enabled?: boolean
 }>(), {
 	deviceId: undefined,
 	enabled: true,
@@ -35,37 +33,43 @@ const emit = defineEmits<{
 	(event: 'update:deviceId', value: string | null | undefined): void
 }>()
 
-const deviceOptions = computed<NcSelectOption[]>(() => ([
-	...props.devices.filter(device => device.kind === props.kind)
-		.map(device => ({ id: device.deviceId, label: device.label ? device.label : device.fallbackLabel })),
-	{ id: null, label: t('spreed', 'None') },
-]))
+const deviceOptions = computed<NcSelectOption[]>(() => {
+	const kindDevices = props.devices.filter((device) => device.kind === props.kind)
+		.map((device) => ({
+			id: device.deviceId,
+			label: device.label ? device.label : device.fallbackLabel,
+		}))
+	if (props.kind === 'audiooutput') {
+		return kindDevices
+	}
+	return [...kindDevices, { id: null, label: t('spreed', 'None') }]
+})
 const deviceOptionsAvailable = computed(() => deviceOptions.value.length > 1)
 
 const deviceIcon = computed<ComponentPublicInstance | null>(() => {
 	switch (props.kind) {
-	case 'audioinput': return IconMicrophone
-	case 'audiooutput': return IconVolumeHigh
-	case 'videoinput': return IconVideo
-	default: return null
+		case 'audioinput': return IconMicrophone
+		case 'audiooutput': return IconVolumeHigh
+		case 'videoinput': return IconVideo
+		default: return null
 	}
 })
 const deviceSelectorPlaceholder = computed(() => {
 	switch (props.kind) {
-	case 'audioinput': return deviceOptionsAvailable.value ? t('spreed', 'Select microphone') : t('spreed', 'No microphone available')
-	case 'audiooutput': return deviceOptionsAvailable.value ? t('spreed', 'Select speaker') : t('spreed', 'No speaker available')
-	case 'videoinput': return deviceOptionsAvailable.value ? t('spreed', 'Select camera') : t('spreed', 'No camera available')
-	default: return ''
+		case 'audioinput': return deviceOptionsAvailable.value ? t('spreed', 'Select microphone') : t('spreed', 'No microphone available')
+		case 'audiooutput': return deviceOptionsAvailable.value ? t('spreed', 'Select speaker') : t('spreed', 'No speaker available')
+		case 'videoinput': return deviceOptionsAvailable.value ? t('spreed', 'Select camera') : t('spreed', 'No camera available')
+		default: return ''
 	}
 })
 
 const deviceSelectedOption = computed<NcSelectOption | null>({
 	get: () => {
-		return deviceOptions.value.find(option => option.id === props.deviceId) ?? null
+		return deviceOptions.value.find((option) => option.id === props.deviceId) ?? null
 	},
 	set: (value) => {
 		updateDeviceId(value?.id ?? null)
-	}
+	},
 })
 
 /**
@@ -83,7 +87,7 @@ function updateDeviceId(deviceId: NcSelectOption['id']) {
 	// The previous selected option changed due to the device being
 	// disconnected, so ignore it as it was not explicitly changed by
 	// the user.
-	if (props.deviceId && !deviceOptions.value.find(option => option.id === props.deviceId)) {
+	if (props.deviceId && !deviceOptions.value.find((option) => option.id === props.deviceId)) {
 		return
 	}
 

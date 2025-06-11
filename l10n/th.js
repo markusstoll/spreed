@@ -14,6 +14,7 @@ OC.L10N.register(
     "Dismiss notification" : "ปิดการแจ้งเตือน",
     "Accept" : "ยอมรับ",
     "Decline" : "ปฏิเสธ",
+    "Notification" : "การแจ้งเตือน",
     "Open settings" : "เปิดการตั้งค่า",
     "error" : "ข้อผิดพลาด",
     "Federation" : "ที่ติดต่อกับภายนอก",
@@ -92,6 +93,7 @@ OC.L10N.register(
     "Keyboard shortcuts" : "แป้นพิมพ์ลัด",
     "Search" : "ค้นหา",
     "Grid view" : "มุมมองแบบตาราง",
+    "Keep" : "เก็บ",
     "Submit" : "ส่ง",
     "User" : "ผู้ใช้",
     "Password" : "รหัสผ่าน",
@@ -113,8 +115,6 @@ OC.L10N.register(
     "__language_name__" : "ไทย",
     "Tasks" : "งาน",
     "Notes" : "โน้ต",
-    "Loading" : "กำลังโหลด",
-    "Close" : "ปิด",
-    "Password protect" : "ป้องกันด้วยรหัสผ่าน"
+    "Close" : "ปิด"
 },
 "nplurals=1; plural=0;");

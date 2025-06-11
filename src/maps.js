@@ -3,13 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import escapeHtml from 'escape-html'
-
 import { getRequestToken } from '@nextcloud/auth'
-import { showSuccess, showError } from '@nextcloud/dialogs'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
 import { generateFilePath, generateUrl } from '@nextcloud/router'
-
+import escapeHtml from 'escape-html'
 import { postRichObjectToConversation } from './services/messagesService.ts'
 import { requestRoomSelection } from './utils/requestRoomSelection.js'
 
@@ -31,11 +29,13 @@ async function postLocationToRoom(location, { token, displayName }) {
 		const messageId = response.data.ocs.data.id
 		const targetUrl = generateUrl('/call/{token}#message_{messageId}', { token, messageId })
 
-		showSuccess(t('spreed', 'Location has been posted to {conversation}')
-			.replace(/\{conversation}/g, `<a target="_blank" class="external" href="${targetUrl}">${escapeHtml(displayName)} ↗</a>`),
-		{
-			isHTML: true,
-		})
+		showSuccess(
+			t('spreed', 'Location has been posted to {conversation}')
+				.replace(/\{conversation}/g, `<a target="_blank" class="external" href="${targetUrl}">${escapeHtml(displayName)} ↗</a>`),
+			{
+				isHTML: true,
+			},
+		)
 	} catch (exception) {
 		console.error('Error posting location to conversation', exception, exception.response?.status)
 		if (exception.response?.status === 403) {
@@ -69,14 +69,12 @@ function init() {
 }
 
 // CSP config for webpack dynamic chunk loading
-// eslint-disable-next-line
 __webpack_nonce__ = btoa(getRequestToken())
 
 // Correct the root of the app for chunk loading
 // OC.linkTo matches the apps folders
 // OC.generateUrl ensure the index.php (or not)
 // We do not want the index.php since we're loading files
-// eslint-disable-next-line
 __webpack_public_path__ = generateFilePath('spreed', '', 'js/')
 
 document.addEventListener('DOMContentLoaded', init)

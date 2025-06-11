@@ -1,11 +1,11 @@
+import type { certificateExpirationParams, certificateExpirationResponse } from '../types/index.ts'
+
 /**
  * SPDX-FileCopyrightText: 2023 Nextcloud GmbH and Nextcloud contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 import axios from '@nextcloud/axios'
 import { generateOcsUrl } from '@nextcloud/router'
-
-import type { certificateExpirationParams, certificateExpirationResponse } from '../types/index.ts'
 
 /**
  * Retrieves the certificate expiration of the specified host
@@ -33,7 +33,7 @@ const isCertificateValid = async (host: certificateExpirationParams['host']): Pr
 		// Null if unable to retrieve the certificates expiration, otherwise the expiration in days (negative if already expired)
 		const expiration = response.data.ocs.data.expiration_in_days
 
-		if (expiration == null) {
+		if (expiration === null) {
 			console.warn('Unable to check certificate of', host)
 			return false
 		} else if (expiration < 0) {

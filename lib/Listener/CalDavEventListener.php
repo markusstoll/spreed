@@ -12,10 +12,13 @@ use OCA\DAV\CalDAV\TimezoneService;
 use OCA\Talk\Exceptions\ParticipantNotFoundException;
 use OCA\Talk\Exceptions\RoomNotFoundException;
 use OCA\Talk\Manager;
+use OCA\Talk\Participant;
 use OCA\Talk\Room;
 use OCA\Talk\Service\ParticipantService;
 use OCA\Talk\Service\RoomService;
+use OCA\Talk\Webinary;
 use OCP\Calendar\Events\CalendarObjectCreatedEvent;
+use OCP\Calendar\Events\CalendarObjectDeletedEvent;
 use OCP\Calendar\Events\CalendarObjectUpdatedEvent;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
@@ -35,7 +38,6 @@ class CalDavEventListener implements IEventListener {
 		private LoggerInterface $logger,
 		private TimezoneService $timezoneService,
 		private ParticipantService $participantService,
-		private string $userId,
 		private IL10N $l10n,
 	) {
 
@@ -43,12 +45,27 @@ class CalDavEventListener implements IEventListener {
 
 	#[\Override]
 	public function handle(Event $event): void {
-		if (!$event instanceof CalendarObjectCreatedEvent && !$event instanceof CalendarObjectUpdatedEvent) {
+		if (!$event instanceof CalendarObjectCreatedEvent && !$event instanceof CalendarObjectUpdatedEvent && !$event instanceof CalendarObjectDeletedEvent) {
 			return;
 		}
 
+		$principaluri = $event->getCalendarData()['principaluri'] ?? null;
+		if (!$principaluri) {
+			$this->logger->debug('No principal uri for the event, skipping for calendar event integration');
+			return;
+		}
+
+		if ($principaluri === 'principals/system/system') {
+			$this->logger->debug('System calendar, skipping for calendar event integration');
+			return;
+		}
+
+		// The principal uri is in the format 'principals/users/<userId>'
+		$userId = substr($principaluri, 17);
+
 		$calData = $event->getObjectData()['calendardata'] ?? null;
 		if (!$calData) {
+			$this->logger->debug('No calendar data for the event, skipping for calendar event integration');
 			return;
 		}
 
@@ -66,7 +83,7 @@ class CalDavEventListener implements IEventListener {
 
 		$vevent = $vobject->VEVENT;
 		// Check if the location is set and if the location string contains a call url
-		$location = $vevent->LOCATION->getValue();
+		$location = $vevent->LOCATION?->getValue();
 		if ($location === null || !str_contains($location, '/call/')) {
 			$this->logger->debug('No location for the event or event is not a call link, skipping for calendar event integration');
 			return;
@@ -83,7 +100,7 @@ class CalDavEventListener implements IEventListener {
 			$roomToken = substr($roomToken, 0, strpos($roomToken, '#'));
 		}
 		try {
-			$room = $this->manager->getRoomForUserByToken($roomToken, $this->userId);
+			$room = $this->manager->getRoomForUserByToken($roomToken, $userId);
 		} catch (RoomNotFoundException) {
 			// Change log level if log is spammed too much
 			$this->logger->warning('Room with ' . $roomToken . ' not found for calendar event integration');
@@ -91,14 +108,14 @@ class CalDavEventListener implements IEventListener {
 		}
 
 		try {
-			$participant = $this->participantService->getParticipant($room, $this->userId, false);
+			$participant = $this->participantService->getParticipant($room, $userId, false);
 		} catch (ParticipantNotFoundException) {
-			$this->logger->debug('Room with ' . $roomToken . ' not found for user ' . $this->userId . ' for calendar event integration');
+			$this->logger->debug('Room with ' . $roomToken . ' not found for user ' . $userId . ' for calendar event integration');
 			return;
 		}
 
-		if (!$participant->hasModeratorPermissions()) {
-			$this->logger->debug('Participant ' . $this->userId . ' does not have moderator permissions for calendar event integration');
+		if ($participant->getAttendee()->getParticipantType() !== Participant::OWNER) {
+			$this->logger->debug('Participant ' . $userId . ' is not owner for calendar event integration');
 			return;
 		}
 
@@ -134,7 +151,7 @@ class CalDavEventListener implements IEventListener {
 			return;
 		}
 
-		if ($this->roomService->hasExistingCalendarEvents($room, $this->userId, $vevent->UID->getValue())) {
+		if ($this->roomService->hasExistingCalendarEvents($room, $userId, $vevent->UID->getValue())) {
 			$this->roomService->resetObject($room);
 			$this->logger->debug("Room $roomToken calendar event was already used previously, converting to regular room for calendar event integration");
 			if ($event instanceof CalendarObjectCreatedEvent && $description !== null) {
@@ -145,6 +162,13 @@ class CalDavEventListener implements IEventListener {
 			}
 			return;
 		}
+
+		// If the calendar event was deleted, we lock the room
+		if ($event instanceof CalendarObjectDeletedEvent) {
+			$this->roomService->setReadOnly($room, Room::READ_ONLY);
+			return;
+		}
+
 
 		// So we can unset names & descriptions in case the user deleted them
 		$this->roomService->setName($room, $name ?? $this->l10n->t('Talk conversation for event'));
@@ -157,7 +181,7 @@ class CalDavEventListener implements IEventListener {
 		if ($start instanceof Date) {
 			// Full day events don't have a timezone so we need to get the user's timezone
 			// If we don't have that we can use the default server timezone
-			$timezone = $this->timezoneService->getUserTimezone($this->userId) ?? $this->timezoneService->getDefaultTimezone();
+			$timezone = $this->timezoneService->getUserTimezone($userId) ?? $this->timezoneService->getDefaultTimezone();
 			try {
 				$start = $start->getDateTime(new \DateTimeZone($timezone))->getTimestamp();
 				$end = $end->getDateTime(new \DateTimeZone($timezone))->getTimestamp();
@@ -174,6 +198,11 @@ class CalDavEventListener implements IEventListener {
 		}
 
 		$objectId = $start . '#' . $end;
-		$this->roomService->setObject($room, $objectId, Room::OBJECT_TYPE_EVENT);
+		$this->roomService->setObject($room, Room::OBJECT_TYPE_EVENT, $objectId);
+		// TODO Reconsider the lobby later, but it needs more thoughts to:
+		// 1. Allow others to ping the owner/host
+		// 2. Automatically disable
+		//    but how to recover from adding a second event to a conversation then?
+		// $this->roomService->setLobby($room, Webinary::LOBBY_NON_MODERATORS, null);
 	}
 }

@@ -4,18 +4,6 @@
  */
 
 import Axios from '@nextcloud/axios'
-
-import CallAnalyzer from './analyzers/CallAnalyzer.js'
-import CallParticipantsAudioPlayer from './CallParticipantsAudioPlayer.js'
-import MediaDevicesManager from './MediaDevicesManager.js'
-import CallParticipantCollection from './models/CallParticipantCollection.js'
-import LocalCallParticipantModel from './models/LocalCallParticipantModel.js'
-import LocalMediaModel from './models/LocalMediaModel.js'
-import SentVideoQualityThrottler from './SentVideoQualityThrottler.js'
-import './shims/MediaStream.js'
-import './shims/MediaStreamTrack.js'
-import SpeakingStatusHandler from './SpeakingStatusHandler.js'
-import initWebRtc from './webrtc.js'
 import { PARTICIPANT, PRIVACY, VIRTUAL_BACKGROUND } from '../../constants.ts'
 import BrowserStorage from '../../services/BrowserStorage.js'
 import { getTalkConfig } from '../../services/CapabilitiesManager.ts'
@@ -26,6 +14,18 @@ import CancelableRequest from '../cancelableRequest.js'
 import Encryption from '../e2ee/encryption.js'
 import Signaling from '../signaling.js'
 import SignalingTypingHandler from '../SignalingTypingHandler.js'
+import CallAnalyzer from './analyzers/CallAnalyzer.js'
+import CallParticipantsAudioPlayer from './CallParticipantsAudioPlayer.js'
+import MediaDevicesManager from './MediaDevicesManager.js'
+import CallParticipantCollection from './models/CallParticipantCollection.js'
+import LocalCallParticipantModel from './models/LocalCallParticipantModel.js'
+import LocalMediaModel from './models/LocalMediaModel.js'
+import SentVideoQualityThrottler from './SentVideoQualityThrottler.js'
+import SpeakingStatusHandler from './SpeakingStatusHandler.js'
+import initWebRtc from './webrtc.js'
+
+import './shims/MediaStream.js'
+import './shims/MediaStreamTrack.js'
 
 let webRtc = null
 const callParticipantCollection = new CallParticipantCollection()
@@ -169,8 +169,9 @@ let failedToStartCall = null
  * @param {boolean} silent Whether the call should trigger a notifications and
  * sound for other participants or not
  * @param {boolean} recordingConsent Whether the participant gave their consent to be recorded
+ * @param {Array<string>} silentFor List of participants that should not receive a notification about the call
  */
-function startCall(signaling, configuration, silent, recordingConsent) {
+function startCall(signaling, configuration, silent, recordingConsent, silentFor) {
 	let flags = PARTICIPANT.CALL_FLAG.IN_CALL
 	if (configuration) {
 		if (configuration.audio) {
@@ -181,9 +182,9 @@ function startCall(signaling, configuration, silent, recordingConsent) {
 		}
 	}
 
-	signaling.joinCall(pendingJoinCallToken, flags, silent, recordingConsent).then(() => {
+	signaling.joinCall(pendingJoinCallToken, flags, silent, recordingConsent, silentFor).then(() => {
 		startedCall(flags)
-	}).catch(error => {
+	}).catch((error) => {
 		signalingLeaveCall(pendingJoinCallToken)
 		failedToStartCall(error)
 	})
@@ -204,7 +205,7 @@ function setupWebRtc() {
 	localCallParticipantModel.setWebRtc(webRtc)
 	localMediaModel.setWebRtc(webRtc)
 
-	signaling.on('sessionId', sessionId => {
+	signaling.on('sessionId', (sessionId) => {
 		localCallParticipantModel.setPeerId(sessionId)
 	})
 }
@@ -231,10 +232,11 @@ async function signalingJoinConversation(token, sessionId) {
  * @param {boolean} silent Whether the call should trigger a notifications and
  * sound for other participants or not
  * @param {boolean} recordingConsent Whether the participant gave their consent to be recorded
+ * @param {Array<string>} silentFor List of participants that should not receive a notification about the call
  * @return {Promise<void>} Resolved with the actual flags based on the
  *          available media
  */
-async function signalingJoinCall(token, flags, silent, recordingConsent) {
+async function signalingJoinCall(token, flags, silent, recordingConsent, silentFor) {
 	if (tokensInSignaling[token]) {
 		pendingJoinCallToken = token
 
@@ -296,13 +298,13 @@ async function signalingJoinCall(token, flags, silent, recordingConsent) {
 				webRtc.off('localMediaStarted', startCallOnceLocalMediaStarted)
 				webRtc.off('localMediaError', startCallOnceLocalMediaError)
 
-				startCall(_signaling, configuration, silent, recordingConsent)
+				startCall(_signaling, configuration, silent, recordingConsent, silentFor)
 			}
 			const startCallOnceLocalMediaError = () => {
 				webRtc.off('localMediaStarted', startCallOnceLocalMediaStarted)
 				webRtc.off('localMediaError', startCallOnceLocalMediaError)
 
-				startCall(_signaling, null, silent, recordingConsent)
+				startCall(_signaling, null, silent, recordingConsent, silentFor)
 			}
 
 			// ".once" can not be used, as both handlers need to be removed when
@@ -333,24 +335,28 @@ async function signalingIsConnected(signaling) {
 
 	const signalingConnectionSucceededOnConnect = () => {
 		signaling.off('connect', signalingConnectionSucceededOnConnect)
-		signaling.off('error', signalingConnectionFailedOnInvalidToken)
+		signaling.off('error', signalingConnectionFailedOnError)
 
 		signalingConnectionSucceeded()
 	}
 
-	const signalingConnectionFailedOnInvalidToken = (error) => {
-		if (error.code !== 'invalid_token') {
+	const signalingConnectionFailedOnError = (error) => {
+		if (error.code !== 'invalid_token' && error.code !== 'invalid_client_type') {
 			return
 		}
 
 		signaling.off('connect', signalingConnectionSucceededOnConnect)
-		signaling.off('error', signalingConnectionFailedOnInvalidToken)
+		signaling.off('error', signalingConnectionFailedOnError)
 
-		signalingConnectionFailed(new Error('Authentication failed for signaling server: ' + signaling.settings.server))
+		if (error.code === 'invalid_token') {
+			signalingConnectionFailed(new Error('Authentication failed for signaling server: ' + signaling.settings.server))
+		} else if (error.code === 'invalid_client_type') {
+			signalingConnectionFailed(new Error('Internal clients are not supported by the signaling server, is \'internalsecret\' set in the signaling server configuration file?'))
+		}
 	}
 
 	signaling.on('connect', signalingConnectionSucceededOnConnect)
-	signaling.on('error', signalingConnectionFailedOnInvalidToken)
+	signaling.on('error', signalingConnectionFailedOnError)
 
 	await signalingConnection
 }
@@ -508,21 +514,19 @@ function signalingSetTyping(typing) {
 }
 
 export {
+	callAnalyzer,
 	callParticipantCollection,
+	callParticipantsAudioPlayer,
 	localCallParticipantModel,
 	localMediaModel,
-
 	mediaDevicesManager,
-
-	callAnalyzer,
-
 	signalingGetSettingsForRecording,
-	signalingJoinConversation,
 	signalingJoinCall,
 	signalingJoinCallForRecording,
+	signalingJoinConversation,
+	signalingKill,
 	signalingLeaveCall,
 	signalingLeaveConversation,
-	signalingKill,
 	signalingSendCallMessage,
 	signalingSetTyping,
 }

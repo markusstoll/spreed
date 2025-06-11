@@ -33,6 +33,8 @@ return [
 		['name' => 'Room#renameRoom', 'url' => '/api/{apiVersion}/room/{token}', 'verb' => 'PUT', 'requirements' => $requirementsWithToken],
 		/** @see \OCA\Talk\Controller\RoomController::deleteRoom() */
 		['name' => 'Room#deleteRoom', 'url' => '/api/{apiVersion}/room/{token}', 'verb' => 'DELETE', 'requirements' => $requirementsWithToken],
+		/** @see \OCA\Talk\Controller\RoomController::unbindRoomFromObject() */
+		['name' => 'Room#unbindRoomFromObject', 'url' => '/api/{apiVersion}/room/{token}/object', 'verb' => 'DELETE', 'requirements' => $requirementsWithToken],
 		/** @see \OCA\Talk\Controller\RoomController::makePublic() */
 		['name' => 'Room#makePublic', 'url' => '/api/{apiVersion}/room/{token}/public', 'verb' => 'POST', 'requirements' => $requirementsWithToken],
 		/** @see \OCA\Talk\Controller\RoomController::makePrivate() */
@@ -87,6 +89,10 @@ return [
 		['name' => 'Room#markConversationAsImportant', 'url' => '/api/{apiVersion}/room/{token}/important', 'verb' => 'POST', 'requirements' => $requirementsWithToken],
 		/** @see \OCA\Talk\Controller\RoomController::markConversationAsUnimportant() */
 		['name' => 'Room#markConversationAsUnimportant', 'url' => '/api/{apiVersion}/room/{token}/important', 'verb' => 'DELETE', 'requirements' => $requirementsWithToken],
+		/** @see \OCA\Talk\Controller\RoomController::markConversationAsSensitive() */
+		['name' => 'Room#markConversationAsSensitive', 'url' => '/api/{apiVersion}/room/{token}/sensitive', 'verb' => 'POST', 'requirements' => $requirementsWithToken],
+		/** @see \OCA\Talk\Controller\RoomController::markConversationAsInsensitive() */
+		['name' => 'Room#markConversationAsInsensitive', 'url' => '/api/{apiVersion}/room/{token}/sensitive', 'verb' => 'DELETE', 'requirements' => $requirementsWithToken],
 		/** @see \OCA\Talk\Controller\RoomController::verifyDialInPin() */
 		['name' => 'Room#verifyDialInPin', 'url' => '/api/{apiVersion}/room/{token}/pin/{pin}', 'verb' => 'GET', 'requirements' => array_merge($requirementsWithToken, [
 			'pin' => '\d{7,32}',
@@ -95,6 +101,8 @@ return [
 		['name' => 'Room#verifyDialInPin', 'url' => '/api/{apiVersion}/room/{token}/verify-dialin', 'verb' => 'POST', 'requirements' => $requirementsWithToken],
 		/** @see \OCA\Talk\Controller\RoomController::verifyDialOutNumber() */
 		['name' => 'Room#verifyDialOutNumber', 'url' => '/api/{apiVersion}/room/{token}/verify-dialout', 'verb' => 'POST', 'requirements' => $requirementsWithToken],
+		/** @see \OCA\Talk\Controller\RoomController::directDialIn() */
+		['name' => 'Room#directDialIn', 'url' => '/api/{apiVersion}/room/direct-dial-in', 'verb' => 'POST', 'requirements' => $requirements],
 		/** @see \OCA\Talk\Controller\RoomController::createGuestByDialIn() */
 		['name' => 'Room#createGuestByDialIn', 'url' => '/api/{apiVersion}/room/{token}/open-dial-in', 'verb' => 'POST', 'requirements' => $requirementsWithToken],
 		/** @see \OCA\Talk\Controller\RoomController::rejectedDialOutRequest() */

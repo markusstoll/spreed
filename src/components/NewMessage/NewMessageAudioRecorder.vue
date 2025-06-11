@@ -32,7 +32,7 @@
 			<NcButton type="success"
 				:title="stopRecordingTitle"
 				:aria-label="stopRecordingTitle"
-				:class="{'audio-recorder__trigger--recording': isRecording}"
+				:class="{ 'audio-recorder__trigger--recording': isRecording }"
 				@click="stop">
 				<template #icon>
 					<Check :size="16" />
@@ -43,17 +43,13 @@
 </template>
 
 <script>
+import { showError } from '@nextcloud/dialogs'
+import { t } from '@nextcloud/l10n'
 import { MediaRecorder } from 'extendable-media-recorder'
-
+import NcButton from '@nextcloud/vue/components/NcButton'
 import Check from 'vue-material-design-icons/Check.vue'
 import Close from 'vue-material-design-icons/Close.vue'
 import Microphone from 'vue-material-design-icons/Microphone.vue'
-
-import { showError } from '@nextcloud/dialogs'
-import { t } from '@nextcloud/l10n'
-
-import NcButton from '@nextcloud/vue/components/NcButton'
-
 import { useAudioEncoder } from '../../composables/useAudioEncoder.ts'
 import { mediaDevicesManager } from '../../utils/webrtc/index.js'
 
@@ -292,7 +288,7 @@ export default {
 		 * Stop the audio streams
 		 */
 		killStreams() {
-			this.audioStream?.getTracks().forEach(track => track.stop())
+			this.audioStream?.getTracks().forEach((track) => track.stop())
 		},
 	},
 

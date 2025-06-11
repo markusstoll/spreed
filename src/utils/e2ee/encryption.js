@@ -8,21 +8,20 @@ import base64js from 'base64-js'
 import debounce from 'debounce'
 import { isEqual } from 'lodash'
 import { v4 as uuidv4 } from 'uuid'
-
+import { getTalkConfig, hasTalkFeature } from '../../services/CapabilitiesManager.ts'
+import Signaling from '../signaling.js'
+import Peer from '../webrtc/simplewebrtc/peer.js'
+import SimpleWebRTC from '../webrtc/simplewebrtc/simplewebrtc.js'
 import { importKey, ratchet } from './crypto-utils.js'
 import Deferred from './JitsiDeferred.js'
 import E2EEcontext from './JitsiE2EEContext.js'
 import initializeOlm from './olm.js'
-import { hasTalkFeature, getTalkConfig } from '../../services/CapabilitiesManager.ts'
-import Signaling from '../signaling.js'
-import Peer from '../webrtc/simplewebrtc/peer.js'
-import SimpleWebRTC from '../webrtc/simplewebrtc/simplewebrtc.js'
 
 const supportsTransform
 	// Firefox
 	= (window.RTCRtpScriptTransform && window.RTCRtpSender && 'transform' in RTCRtpSender.prototype)
 	// Chrome
-	|| (window.RTCRtpReceiver && 'createEncodedStreams' in RTCRtpReceiver.prototype && window.RTCRtpSender && 'createEncodedStreams' in RTCRtpSender.prototype)
+		|| (window.RTCRtpReceiver && 'createEncodedStreams' in RTCRtpReceiver.prototype && window.RTCRtpSender && 'createEncodedStreams' in RTCRtpSender.prototype)
 
 // Period which we'll wait before updating / rotating our keys when a participant
 // joins or leaves.
@@ -37,7 +36,6 @@ const TYPE_ENCRYPTION_GOT_KEY = 'encryption.gotkey'
 const TYPE_ENCRYPTION_ERROR = 'encryption.error'
 
 class Encryption {
-
 	/**
 	 * Check if the current browser supports encryption.
 	 *
@@ -197,21 +195,21 @@ class Encryption {
 	_handleMessage(message) {
 		const sender = message.from
 		switch (message.payload?.type) {
-		case TYPE_ENCRYPTION_START:
-			this._processStartSession(sender, message)
-			break
-		case TYPE_ENCRYPTION_FINISH:
-			this._processFinishSession(sender, message)
-			break
-		case TYPE_ENCRYPTION_SET_KEY:
-			this._processSessionSetKey(sender, message)
-			break
-		case TYPE_ENCRYPTION_GOT_KEY:
-			this._processSessionGotKey(sender, message)
-			break
-		case TYPE_ENCRYPTION_ERROR:
-			this._processError(sender, message)
-			break
+			case TYPE_ENCRYPTION_START:
+				this._processStartSession(sender, message)
+				break
+			case TYPE_ENCRYPTION_FINISH:
+				this._processFinishSession(sender, message)
+				break
+			case TYPE_ENCRYPTION_SET_KEY:
+				this._processSessionSetKey(sender, message)
+				break
+			case TYPE_ENCRYPTION_GOT_KEY:
+				this._processSessionGotKey(sender, message)
+				break
+			case TYPE_ENCRYPTION_ERROR:
+				this._processError(sender, message)
+				break
 		}
 	}
 
@@ -659,7 +657,7 @@ class Encryption {
 	 * @private
 	 */
 	_findReceiverForTrack(pc, track) {
-		return pc && pc.getReceivers().find(r => r.track === track)
+		return pc && pc.getReceivers().find((r) => r.track === track)
 	}
 
 	/**
@@ -680,7 +678,6 @@ class Encryption {
 			this.context.handleReceiver(receiver, receiver.track.kind, peer.id)
 		})
 	}
-
 }
 
 export default Encryption

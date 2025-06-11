@@ -78,16 +78,17 @@ OC.L10N.register(
     "More information" : "Meir informasjon",
     "Delete" : "Slett",
     "Notifications" : "Varsel",
+    "Important conversation" : "Viktig samtale",
     "Log in" : "Logg inn",
     "Remove from favorites" : "Remove from favorites",
     "Add to favorites" : "Add to favorites",
+    "Unread messages" : "Meldingar er ikkje lest",
     "Users" : "Brukarare",
     "Groups" : "Grupper",
     "None" : "Ingen",
     "Upload" : "Last opp",
     "Files" : "Filer",
     "Message sent" : "Melding sendt",
-    "Unread messages" : "Meldingar er ikkje lest",
     "Reply" : "Svare",
     "Reply privately" : "Svar privat",
     "Dismiss" : "Forkast",
@@ -128,8 +129,6 @@ OC.L10N.register(
     "The password is wrong. Try again." : "Passordet er gale. Prøv igjen.",
     "__language_name__" : "Nynorsk",
     "Tasks" : "Oppgåver",
-    "Loading" : "Loading",
-    "Close" : "Lukk",
-    "Password protect" : "Vern med passord"
+    "Close" : "Lukk"
 },
 "nplurals=2; plural=(n != 1);");

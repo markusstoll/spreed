@@ -4,10 +4,9 @@
  */
 
 import { nextTick, ref } from 'vue'
-
-import { useIsInCall } from './useIsInCall.js'
 import { useCallViewStore } from '../stores/callView.ts'
 import { useSidebarStore } from '../stores/sidebar.ts'
+import { useIsInCall } from './useIsInCall.js'
 
 /**
  * @callback OpenViewer
@@ -80,20 +79,20 @@ export function useViewer(fileAPI) {
 	 */
 	function generateViewerObject(file) {
 		switch (fileAPI) {
-		case 'files': return {
-			...file,
-			permissions: generatePermissions(file.permissions), // Viewer expects a String instead of Bitmask
-		}
-		case 'talk':
-		default: return {
-			fileid: parseInt(file.id, 10),
-			filename: generateAbsolutePath(file.path),
-			basename: file.name,
-			mime: file.mimetype,
-			hasPreview: (file.previewAvailable === 'yes' || file['preview-available'] === 'yes'),
-			etag: file.etag,
-			permissions: generatePermissions(file.permissions), // Viewer expects a String instead of Bitmask
-		}
+			case 'files': return {
+				...file,
+				permissions: generatePermissions(file.permissions), // Viewer expects a String instead of Bitmask
+			}
+			case 'talk':
+			default: return {
+				fileid: parseInt(file.id, 10),
+				filename: generateAbsolutePath(file.path),
+				basename: file.name,
+				mime: file.mimetype,
+				hasPreview: (file.previewAvailable === 'yes' || file['preview-available'] === 'yes'),
+				etag: file.etag,
+				permissions: generatePermissions(file.permissions), // Viewer expects a String instead of Bitmask
+			}
 		}
 	}
 

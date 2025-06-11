@@ -65,11 +65,9 @@
 <script>
 import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
-
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
-
 import { getTalkConfig } from '../../services/CapabilitiesManager.ts'
 import { EventBus } from '../../services/EventBus.ts'
 
@@ -116,9 +114,11 @@ export default {
 		isConversationsFilesChecked() {
 			return this.conversationsFiles
 		},
+
 		isConversationsFilesPublicSharesChecked() {
 			return this.conversationsFilesPublicShares
 		},
+
 		canEnableE2EECalls() {
 			return this.hasFeatureJoinFeatures || !this.hasSIPBridge
 		},
@@ -167,6 +167,7 @@ export default {
 				},
 			})
 		},
+
 		saveConversationsFiles(checked) {
 			this.loadingConversationsFiles = true
 			this.conversationsFiles = checked
@@ -187,6 +188,7 @@ export default {
 				},
 			})
 		},
+
 		saveConversationsFilesPublicShares(checked) {
 			this.loadingConversationsFiles = true
 			this.conversationsFilesPublicShares = checked
@@ -200,6 +202,7 @@ export default {
 	},
 }
 </script>
+
 <style scoped lang="scss">
 
 h3 {

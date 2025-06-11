@@ -241,6 +241,46 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/ocs/v2.php/apps/spreed/api/{apiVersion}/dashboard/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get up to 10 rooms that have events in the next 7 days sorted by their start timestamp ascending
+         * @description Required capability: `dashboard-event-rooms`
+         */
+        get: operations["calendar_integration-get-dashboard-events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ocs/v2.php/apps/spreed/api/{apiVersion}/room/{token}/mutual-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get up to 3 events in the next 7 days sorted by their start timestamp ascending
+         * @description Required capability: `mutual-calendar-events`
+         */
+        get: operations["calendar_integration-get-mutual-events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ocs/v2.php/apps/spreed/api/{apiVersion}/call/{token}": {
         parameters: {
             query?: never;
@@ -450,6 +490,26 @@ export type paths = {
         post: operations["chat-set-reminder"];
         /** Delete a chat reminder */
         delete: operations["chat-delete-reminder"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ocs/v2.php/apps/spreed/api/{apiVersion}/chat/upcoming-reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get all upcoming reminders
+         * @description Required capability: `upcoming-reminders`
+         */
+        get: operations["chat-get-upcoming-reminders"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -891,6 +951,26 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/ocs/v2.php/apps/spreed/api/{apiVersion}/room/{token}/object": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unbind a room from its object to prevent automatic retention
+         * @description Required capability: `unbind-conversation`
+         */
+        delete: operations["room-unbind-room-from-object"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ocs/v2.php/apps/spreed/api/{apiVersion}/room/{token}/public": {
         parameters: {
             query?: never;
@@ -1210,6 +1290,30 @@ export type paths = {
          * @description Required capability: `important-conversations`
          */
         delete: operations["room-mark-conversation-as-unimportant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ocs/v2.php/apps/spreed/api/{apiVersion}/room/{token}/sensitive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a conversation as sensitive (no last message is visible / no push preview is shown)
+         * @description Required capability: `sensitive-conversations`
+         */
+        post: operations["room-mark-conversation-as-sensitive"];
+        /**
+         * Mark a conversation as insensitive (last message is visible / push preview is shown)
+         * @description Required capability: `sensitive-conversations`
+         */
+        delete: operations["room-mark-conversation-as-insensitive"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1553,7 +1657,10 @@ export type components = {
                     /** Format: int64 */
                     "recording-consent": number;
                     "supported-reactions": string[];
+                    /** @description List of file names relative to the spreed/img/backgrounds/ web path, e.g. `2_home.jpg` */
                     "predefined-backgrounds": string[];
+                    /** @description List of file paths relative to the server web root with leading slash, e.g. `/apps/spreed/img/backgrounds/2_home.jpg` */
+                    "predefined-backgrounds-v2": string[];
                     "can-upload-background": boolean;
                     "sip-enabled": boolean;
                     "sip-dialout-enabled": boolean;
@@ -1583,6 +1690,12 @@ export type components = {
                     "list-style": "two-lines" | "compact";
                     /** Format: int64 */
                     "description-length": number;
+                    /** Format: int64 */
+                    "retention-event": number;
+                    /** Format: int64 */
+                    "retention-phone": number;
+                    /** Format: int64 */
+                    "retention-instant-meetings": number;
                 };
                 federation: {
                     enabled: boolean;
@@ -1598,6 +1711,10 @@ export type components = {
                     /** Format: int64 */
                     "session-ping-limit": number;
                     "hello-v2-token-key"?: string;
+                };
+                experiments: {
+                    /** Format: int64 */
+                    enabled: number;
                 };
             };
             "config-local": {
@@ -1650,6 +1767,63 @@ export type components = {
             timestamp: number;
             token: string;
             userId: string;
+        };
+        ChatReminderUpcoming: {
+            actorDisplayName: string;
+            actorId: string;
+            actorType: string;
+            message: string;
+            /** Format: int64 */
+            messageId: number;
+            messageParameters: {
+                [key: string]: components["schemas"]["RichObjectParameter"];
+            };
+            /** Format: int64 */
+            reminderTimestamp: number;
+            roomToken: string;
+        };
+        DashboardEvent: {
+            calendars: components["schemas"]["DashboardEventCalendar"][];
+            eventName: string;
+            eventDescription: string | null;
+            eventAttachments: {
+                [key: string]: components["schemas"]["DashboardEventAttachment"];
+            };
+            eventLink: string;
+            /** Format: int64 */
+            start: number;
+            /** Format: int64 */
+            end: number;
+            roomToken: string;
+            roomAvatarVersion: string;
+            roomName: string;
+            roomDisplayName: string;
+            /** Format: int64 */
+            roomType: number;
+            /** Format: int64 */
+            roomActiveSince: number | null;
+            /** Format: int64 */
+            invited: number | null;
+            /** Format: int64 */
+            accepted: number | null;
+            /** Format: int64 */
+            tentative: number | null;
+            /** Format: int64 */
+            declined: number | null;
+        };
+        DashboardEventAttachment: {
+            calendars: string[];
+            fmttype: string;
+            filename: string;
+            /** Format: int64 */
+            fileid: number;
+            preview: boolean;
+            previewLink: string | null;
+        };
+        DashboardEventCalendar: {
+            principalUri: string;
+            calendarName: string;
+            calendarColor: string | null;
         };
         DeletedChatMessage: {
             /** Format: int64 */
@@ -1796,103 +1970,215 @@ export type components = {
             blurhash?: string;
         };
         Room: {
+            /** @description The unique identifier for the given actor type */
             actorId: string;
+            /** @description The cloud id of the invited user */
             invitedActorId?: string;
+            /** @description Actor type of the current user (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#attendee-types)) */
             actorType: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Unique attendee id
+             */
             attendeeId: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Dedicated permissions for the current participant, if not `Custom` this are not the resulting permissions (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#attendee-permissions))
+             */
             attendeePermissions: number;
+            /** @description Unique dial-in authentication code for this user, when the conversation has SIP enabled (see `sipEnabled` attribute) */
             attendeePin: string | null;
+            /** @description Version of conversation avatar used to easier expiration of the avatar in case a moderator updates it, since the avatar endpoint should be cached for 24 hours. (only available with `avatar` capability) */
             avatarVersion: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Breakout room configuration mode (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#breakout-room-modes)) (only available with `breakout-rooms-v1` capability)
+             */
             breakoutRoomMode: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Breakout room status (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#breakout-room-status)) (only available with `breakout-rooms-v1` capability)
+             */
             breakoutRoomStatus: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Combined flag of all participants in the current call (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#participant-in-call-flag), only available with `conversation-call-flags` capability)
+             */
             callFlag: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Call permissions, if not `Custom` this are not the resulting permissions, if set they will reset after the end of the call (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#attendee-permissions))
+             */
             callPermissions: number;
             /**
              * Format: int64
+             * @description Type of call recording (see [Constants - Call recording status](https://nextcloud-talk.readthedocs.io/en/latest/constants#call-recording-status)) (only available with `recording-v1` capability)
              * @enum {integer}
              */
             callRecording: 0 | 1 | 2 | 3 | 4 | 5;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Timestamp when the call was started (only available with `recording-v1` capability)
+             */
             callStartTime: number;
+            /** @description Flag if the user can delete the conversation for everyone (not possible without moderator permissions or in one-to-one conversations) */
             canDeleteConversation: boolean;
+            /** @description Whether the given user can enable SIP for this conversation. Note that when the token is not-numeric only, SIP can not be enabled even if the user is permitted and a moderator of the conversation */
             canEnableSIP: boolean;
+            /** @description Flag if the user can leave the conversation (not possible for the last user with moderator permissions) */
             canLeaveConversation: boolean;
+            /** @description Flag if the user can start a new call in this conversation (joining is always possible) (only available with `start-call-flag` capability) */
             canStartCall: boolean;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Default permissions for new participants (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#attendee-permissions))
+             */
             defaultPermissions: number;
+            /** @description Description of the conversation (can also be empty) (only available with `room-description` capability) */
             description: string;
+            /** @description `name` if non-empty, otherwise it falls back to a list of participants */
             displayName: string;
+            /** @description Flag if the conversation has an active call */
             hasCall: boolean;
+            /** @description Flag if the conversation has a password */
             hasPassword: boolean;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Numeric identifier of the conversation
+             */
             id: number;
+            /** @description Flag if the conversation has a custom avatar (only available with `avatar` capability) */
             isCustomAvatar: boolean;
+            /** @description Flag if the conversation is favorited by the user */
             isFavorite: boolean;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Timestamp of the last activity in the conversation, in seconds and UTC time zone
+             */
             lastActivity: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description ID of the last message read by every user that has read privacy set to public in a room. When the user themself has it set to private the value is `0` (only available with `chat-read-status` capability)
+             */
             lastCommonReadMessage: number;
+            /** @description Last message in a conversation if available, otherwise empty. **Note:** Even when given the message will not contain the `parent` or `reactionsSelf` attribute due to performance reasons */
             lastMessage?: components["schemas"]["RoomLastMessage"];
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Timestamp of the user's session making the request
+             */
             lastPing: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description ID of the last read message in a room (only available with `chat-read-marker` capability)
+             */
             lastReadMessage: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Listable scope for the room (only available with `listable-rooms` capability)
+             */
             listable: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Webinar lobby restriction (0-1), if the participant is a moderator they can always join the conversation (only available with `webinary-lobby` capability) (See [Webinar lobby states](https://nextcloud-talk.readthedocs.io/en/latest/constants#webinar-lobby-states))
+             */
             lobbyState: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Timestamp when the lobby will be automatically disabled (only available with `webinary-lobby` capability)
+             */
             lobbyTimer: number;
             /**
              * Format: int64
+             * @description Whether all participants can mention using `@all` or only moderators (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#mention-permissions)) (only available with `mention-permissions` capability)
              * @enum {integer}
              */
             mentionPermissions: 0 | 1;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description The message expiration time in seconds in this chat. Zero if disabled. (only available with `message-expiration` capability)
+             */
             messageExpiration: number;
+            /** @description Name of the conversation (can also be empty) */
             name: string;
             /** Format: int64 */
             notificationCalls: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description The notification level for the user (See [Participant notification levels](https://nextcloud-talk.readthedocs.io/en/latest/constants#participant-notification-levels))
+             */
             notificationLevel: number;
+            /** @description See [Object types](https://nextcloud-talk.readthedocs.io/en/latest/constants#object-types) documentation for explanation */
             objectId: string;
+            /** @description The type of object that the conversation is associated with (See [Object types](https://nextcloud-talk.readthedocs.io/en/latest/constants#object-types)) */
             objectType: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description "In call" flags of the user's session making the request (only available with `in-call-flags` capability)
+             */
             participantFlags: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Permissions level of the current user
+             */
             participantType: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Combined final permissions for the current participant, permissions are picked in order of attendee then call then default and the first which is `Custom` will apply (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#attendee-permissions))
+             */
             permissions: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Read-only state for the current user (only available with `read-only-rooms` capability)
+             */
             readOnly: number;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Whether recording consent is required before joining a call (Only 0 and 1 will be returned, see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#recording-consent-required)) (only available with `recording-consent` capability)
+             */
             recordingConsent: number;
             remoteServer?: string;
             remoteToken?: string;
+            /** @description `'0'` if not connected, otherwise an up to 512 character long string that is the identifier of the user's session making the request. Should only be used to pre-check if the user joined already with this session, but this might be outdated by the time of usage, so better check via [Get list of participants in a conversation](https://nextcloud-talk.readthedocs.io/en/latest/participant/#get-list-of-participants-in-a-conversation) */
             sessionId: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description SIP enable status (see [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants#sip-states))
+             */
             sipEnabled: number;
+            /** @description Optional: Only available for one-to-one conversations, when `includeStatus=true` is set and the user has a status */
             status?: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Optional: Only available for one-to-one conversations, when `includeStatus=true` is set and the user has a status, can still be null even with a status
+             */
             statusClearAt?: number | null;
+            /** @description Optional: Only available for one-to-one conversations, when `includeStatus=true` is set and the user has a status, can still be null even with a status */
             statusIcon?: string | null;
+            /** @description Optional: Only available for one-to-one conversations, when `includeStatus=true` is set and the user has a status, can still be null even with a status */
             statusMessage?: string | null;
+            /** @description Token identifier of the conversation which is used for further interaction */
             token: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description See list of conversation types in the [constants list](https://nextcloud-talk.readthedocs.io/en/latest/constants/#conversation-types)
+             */
             type: number;
+            /** @description Flag if the user was mentioned since their last visit */
             unreadMention: boolean;
+            /** @description Flag if the user was mentioned directly (ignoring `@all` mentions) since their last visit (only available with `direct-mention-flag` capability) */
             unreadMentionDirect: boolean;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Number of unread chat messages in the conversation (only available with `chat-v2` capability)
+             */
             unreadMessages: number;
+            /** @description Flag if the conversation is archived by the user (only available with `archived-conversations-v2` capability) */
             isArchived: boolean;
             /** @description Required capability: `important-conversations` */
             isImportant: boolean;
+            /** @description Required capability: `sensitive-conversations` */
+            isSensitive: boolean;
         };
         RoomLastMessage: components["schemas"]["ChatMessage"] | components["schemas"]["ChatProxyMessage"];
         RoomWithInvalidInvitations: components["schemas"]["Room"] & {
@@ -1962,6 +2248,8 @@ export interface operations {
                 darkTheme?: 0 | 1;
             };
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -2122,6 +2410,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -2881,10 +3171,87 @@ export interface operations {
             };
         };
     };
+    "calendar_integration-get-dashboard-events": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required to be true for the API request to pass */
+                "OCS-APIRequest": boolean;
+            };
+            path: {
+                apiVersion: "v4";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of dashboard entries or an empty array */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: components["schemas"]["DashboardEvent"][];
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "calendar_integration-get-mutual-events": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required to be true for the API request to pass */
+                "OCS-APIRequest": boolean;
+            };
+            path: {
+                apiVersion: "v4";
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of dashboard entries or an empty array */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: components["schemas"]["DashboardEvent"][];
+                        };
+                    };
+                };
+            };
+            /** @description Room is not a 1 to 1 room, room is invalid, or user is not participant */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
     "call-get-peers-for-call": {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -2916,6 +3283,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -2985,6 +3354,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -3000,6 +3371,7 @@ export interface operations {
                     /**
                      * Format: int64
                      * @description In-Call flags
+                     * @default null
                      */
                     flags?: number | null;
                     /**
@@ -3012,6 +3384,11 @@ export interface operations {
                      * @default false
                      */
                     recordingConsent?: boolean;
+                    /**
+                     * @description Send no call notification for previous participants
+                     * @default []
+                     */
+                    silentFor?: string[];
                 };
             };
         };
@@ -3069,6 +3446,8 @@ export interface operations {
                 all?: 0 | 1;
             };
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -3312,6 +3691,7 @@ export interface operations {
                     /**
                      * Format: int64
                      * @description In-Call flags
+                     * @default null
                      */
                     flags?: number | null;
                     /**
@@ -3426,6 +3806,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -3586,6 +3968,8 @@ export interface operations {
                 markNotificationsAsRead?: 0 | 1;
             };
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -3626,6 +4010,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -3889,6 +4275,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -4025,6 +4413,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -4141,6 +4531,8 @@ export interface operations {
                 limit?: number;
             };
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -4183,6 +4575,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -4232,6 +4626,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -4291,6 +4687,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -4338,10 +4736,42 @@ export interface operations {
             };
         };
     };
+    "chat-get-upcoming-reminders": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required to be true for the API request to pass */
+                "OCS-APIRequest": boolean;
+            };
+            path: {
+                apiVersion: "v1";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reminders returned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: components["schemas"]["ChatReminderUpcoming"][];
+                        };
+                    };
+                };
+            };
+        };
+    };
     "chat-set-read-marker": {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -4357,6 +4787,7 @@ export interface operations {
                     /**
                      * Format: int64
                      * @description ID if the last read message (Optional only with `chat-read-last` capability)
+                     * @default null
                      */
                     lastReadMessage?: number | null;
                 };
@@ -4384,6 +4815,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -4423,6 +4856,8 @@ export interface operations {
                 includeStatus?: 0 | 1;
             };
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -4995,6 +5430,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -5082,6 +5519,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -5186,6 +5625,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -5245,6 +5686,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -5294,6 +5737,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -5369,6 +5814,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -5525,6 +5972,8 @@ export interface operations {
                 reaction?: string | null;
             };
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -5574,6 +6023,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -5663,6 +6114,8 @@ export interface operations {
                 reaction: string;
             };
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -6059,6 +6512,7 @@ export interface operations {
                     /**
                      * Format: int64
                      * @description Timer when the lobby will be removed (Default null, will not be disabled automatically) (only available with `conversation-creation-all` capability)
+                     * @default null
                      */
                     lobbyTimer?: number | null;
                     /**
@@ -6089,9 +6543,15 @@ export interface operations {
                      * @default
                      */
                     description?: string;
-                    /** @description Emoji for the avatar of the conversation (only available with `conversation-creation-all` capability) */
+                    /**
+                     * @description Emoji for the avatar of the conversation (only available with `conversation-creation-all` capability)
+                     * @default null
+                     */
                     emoji?: string | null;
-                    /** @description Background color of the avatar (Only considered when an emoji was provided) (only available with `conversation-creation-all` capability) */
+                    /**
+                     * @description Background color of the avatar (Only considered when an emoji was provided) (only available with `conversation-creation-all` capability)
+                     * @default null
+                     */
                     avatarColor?: string | null;
                     /**
                      * @description List of participants to add grouped by type (only available with `conversation-creation-all` capability)
@@ -6268,6 +6728,12 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
+                /** @description Random seed used to generate the request checksum */
+                "talk-sipbridge-random"?: string;
+                /** @description Checksum over the request body to verify authenticity from the Sipbridge */
+                "talk-sipbridge-checksum"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -6465,6 +6931,54 @@ export interface operations {
                             meta: components["schemas"]["OCSMeta"];
                             data: {
                                 error: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "room-unbind-room-from-object": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required to be true for the API request to pass */
+                "OCS-APIRequest": boolean;
+            };
+            path: {
+                apiVersion: "v4";
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Room successfully unbound */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: components["schemas"]["Room"];
+                        };
+                    };
+                };
+            };
+            /** @description Unbinding room is not possible */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: {
+                                /** @enum {string} */
+                                error: "object-type";
                             };
                         };
                     };
@@ -6875,6 +7389,8 @@ export interface operations {
                 includeStatus?: 0 | 1;
             };
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -7084,6 +7600,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -7932,6 +8450,68 @@ export interface operations {
             };
         };
     };
+    "room-mark-conversation-as-sensitive": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required to be true for the API request to pass */
+                "OCS-APIRequest": boolean;
+            };
+            path: {
+                apiVersion: "v4";
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Conversation was marked as sensitive */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: components["schemas"]["Room"];
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "room-mark-conversation-as-insensitive": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required to be true for the API request to pass */
+                "OCS-APIRequest": boolean;
+            };
+            path: {
+                apiVersion: "v4";
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Conversation was marked as insensitive */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ocs: {
+                            meta: components["schemas"]["OCSMeta"];
+                            data: components["schemas"]["Room"];
+                        };
+                    };
+                };
+            };
+        };
+    };
     "room-set-notification-level": {
         parameters: {
             query?: never;
@@ -8073,6 +8653,7 @@ export interface operations {
                     /**
                      * Format: int64
                      * @description Timer when the lobby will be removed
+                     * @default null
                      */
                     timer?: number | null;
                 };
@@ -8359,6 +8940,8 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
+                /** @description Set to 1 when the request is performed by another Nextcloud Server to indicate a federation request */
+                "x-nextcloud-federation"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };
@@ -8612,16 +9195,26 @@ export interface operations {
                      * @description Unix timestamp when the meeting starts
                      */
                     start: number;
-                    /** @description List of attendee ids to invite, if null everyone will be invited, if empty array only the actor will receive the event */
+                    /**
+                     * @description List of attendee ids to invite, if null everyone will be invited, if empty array only the actor will receive the event
+                     * @default null
+                     */
                     attendeeIds?: number[] | null;
                     /**
                      * Format: int64
                      * @description Unix timestamp when the meeting ends, falls back to 60 minutes after start
+                     * @default null
                      */
                     end?: number | null;
-                    /** @description Title or summary of the event, falling back to the conversation name if none is given */
+                    /**
+                     * @description Title or summary of the event, falling back to the conversation name if none is given
+                     * @default null
+                     */
                     title?: string | null;
-                    /** @description Description of the event, falling back to the conversation description if none is given */
+                    /**
+                     * @description Description of the event, falling back to the conversation description if none is given
+                     * @default null
+                     */
                     description?: string | null;
                 };
             };
@@ -8652,7 +9245,7 @@ export interface operations {
                             meta: components["schemas"]["OCSMeta"];
                             data: {
                                 /** @enum {string} */
-                                error: "calendar" | "email" | "end" | "start";
+                                error: "calendar" | "conversation" | "email" | "end" | "start";
                             };
                         };
                     };
@@ -8723,6 +9316,10 @@ export interface operations {
                 token?: string;
             };
             header: {
+                /** @description Random seed used to generate the request checksum */
+                "talk-recording-random"?: string;
+                /** @description Checksum over the request body to verify authenticity from the recording backend */
+                "talk-recording-checksum"?: string;
                 /** @description Required to be true for the API request to pass */
                 "OCS-APIRequest": boolean;
             };

@@ -9,6 +9,20 @@ export const CONFIG = {
 		REQUIRED: 1,
 		OPTIONAL: 2,
 	},
+	EXPERIMENTAL: {
+		/**
+		 * Since 21.1.0
+		 * Instead of refreshing the participant list repeatingly,
+		 * the data is generated from received signaling messages
+		 */
+		UPDATE_PARTICIPANTS: 1,
+		/**
+		 * Since 21.1.0
+		 * Make automatic attempts to recover suspended / expired signaling session
+		 * to allow join the call without page reload
+		 */
+		RECOVER_SESSION: 2,
+	},
 } as const
 
 export const SIGNALING = {
@@ -98,13 +112,23 @@ export const CONVERSATION = {
 
 	OBJECT_TYPE: {
 		EMAIL: 'emails',
+		EVENT: 'event',
 		FILE: 'file',
-		PHONE: 'phone',
+		/** @deprecated */
+		PHONE_LEGACY: 'phone',
+		PHONE_PERSISTENT: 'phone_persist',
+		PHONE_TEMPORARY: 'phone_temporary',
 		CIRCLES: 'circles',
 		VIDEO_VERIFICATION: 'share:password',
 		BREAKOUT_ROOM: 'room',
 		EXTENDED: 'extended_conversation',
+		INSTANT_MEETING: 'instant_meeting',
 		DEFAULT: '',
+	},
+
+	OBJECT_ID: {
+		PHONE_INCOMING: 'direct-dialin',
+		PHONE_OUTGOING: 'phone',
 	},
 
 	LIST_STYLE: {
@@ -142,6 +166,17 @@ export const ATTENDEE = {
 export const MESSAGE = {
 	CHAT_BEGIN_ID: -2,
 	CHAT_MIGRATION_ID: -1,
+
+	TYPE: {
+		COMMENT: 'comment',
+		SYSTEM: 'system',
+		OBJECT_SHARED: 'object_shared',
+		COMMAND: 'command',
+		COMMENT_DELETED: 'comment_deleted',
+		VOICE_MESSAGE: 'voice-message',
+		RECORD_AUDIO: 'record-audio',
+		RECORD_VIDEO: 'record-video',
+	},
 } as const
 
 export const PARTICIPANT = {

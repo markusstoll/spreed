@@ -80,23 +80,19 @@
 </template>
 
 <script>
-import IconFileUpload from 'vue-material-design-icons/FileUpload.vue'
-import IconPoll from 'vue-material-design-icons/Poll.vue'
-
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { t } from '@nextcloud/l10n'
-
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcDateTimePicker from '@nextcloud/vue/components/NcDateTimePicker'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-
+import IconFileUpload from 'vue-material-design-icons/FileUpload.vue'
+import IconPoll from 'vue-material-design-icons/Poll.vue'
 import ImportEmailsDialog from '../ImportEmailsDialog.vue'
-
 import { WEBINAR } from '../../constants.ts'
 import { hasTalkFeature } from '../../services/CapabilitiesManager.ts'
 import { EventBus } from '../../services/EventBus.ts'
-import { ONE_DAY_IN_MS, convertToUnix, futureRelativeTime } from '../../utils/formattedTime.ts'
+import { convertToUnix, futureRelativeTime, ONE_DAY_IN_MS } from '../../utils/formattedTime.ts'
 
 export default {
 	name: 'LobbySettings',
@@ -167,9 +163,10 @@ export default {
 				// millisecond based.
 				return this.conversation.lobbyTimer * 1000
 			},
+
 			set(value) {
 				this.saveLobbyTimer(value)
-			}
+			},
 		},
 
 		dateTimePickerAttrs() {
@@ -208,27 +205,11 @@ export default {
 	methods: {
 		t,
 		async toggleLobby() {
-			const newLobbyState = this.conversation.lobbyState !== WEBINAR.LOBBY.NON_MODERATORS
 			this.isLobbyStateLoading = true
-			try {
-				await this.$store.dispatch('toggleLobby', {
-					token: this.token,
-					enableLobby: newLobbyState,
-				})
-				if (newLobbyState) {
-					showSuccess(t('spreed', 'You restricted the conversation to moderators'))
-				} else {
-					showSuccess(t('spreed', 'You opened the conversation to everyone'))
-				}
-			} catch (e) {
-				if (newLobbyState) {
-					console.error('Error occurred when restricting the conversation to moderator', e)
-					showError(t('spreed', 'Error occurred when restricting the conversation to moderator'))
-				} else {
-					console.error('Error occurred when opening the conversation to everyone', e)
-					showError(t('spreed', 'Error occurred when opening the conversation to everyone'))
-				}
-			}
+			await this.$store.dispatch('toggleLobby', {
+				token: this.token,
+				enableLobby: this.conversation.lobbyState !== WEBINAR.LOBBY.NON_MODERATORS,
+			})
 			this.isLobbyStateLoading = false
 		},
 
@@ -250,8 +231,8 @@ export default {
 		},
 
 		openPollDraftHandler() {
-			EventBus.emit('poll-drafts-open', { selector: '#settings-section_meeting' })
-		}
+			EventBus.emit('poll-drafts-open', { token: this.token, selector: '#settings-section_meeting' })
+		},
 	},
 }
 </script>

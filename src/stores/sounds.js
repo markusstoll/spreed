@@ -3,13 +3,11 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
-import { defineStore } from 'pinia'
-import Vue from 'vue'
-
 import { getCurrentUser } from '@nextcloud/auth'
 import { loadState } from '@nextcloud/initial-state'
 import { generateFilePath } from '@nextcloud/router'
-
+import { defineStore } from 'pinia'
+import Vue from 'vue'
 import BrowserStorage from '../services/BrowserStorage.js'
 import { setPlaySounds } from '../services/settingsService.ts'
 
@@ -25,6 +23,7 @@ const shouldPlaySounds = hasUserAccount
  * Preferred version is the .ogg, with .flac fallback if .ogg is not supported (Safari)
  */
 const fileExtension = new Audio().canPlayType('audio/ogg') ? '.ogg' : '.flac'
+const isAudioOutputSelectSupported = !!(new Audio().setSinkId)
 
 export const useSoundsStore = defineStore('sounds', {
 	state: () => ({
@@ -57,7 +56,7 @@ export const useSoundsStore = defineStore('sounds', {
 				this.initAudioObjects()
 			}
 			this.audioObjectsPromises[key] = this.audioObjects[key].play()
-			this.audioObjectsPromises[key].catch(error => {
+			this.audioObjectsPromises[key].catch((error) => {
 				console.error(error)
 			})
 		},
@@ -106,5 +105,24 @@ export const useSoundsStore = defineStore('sounds', {
 			this.createAudioObject('wait', 'LibremPhoneCall', 0.5)
 			this.audioObjectsCreated = true
 		},
-	}
+
+		async setGeneralAudioOutput(deviceId) {
+			if (!isAudioOutputSelectSupported) {
+				return
+			}
+
+			if (!this.audioObjectsCreated) {
+				this.initAudioObjects()
+			}
+
+			try {
+				for (const key in this.audioObjects) {
+					this.pauseAudio(key)
+					await this.audioObjects[key].setSinkId(deviceId)
+				}
+			} catch (error) {
+				console.error(error)
+			}
+		},
+	},
 })

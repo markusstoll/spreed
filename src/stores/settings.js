@@ -3,20 +3,18 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
+import { loadState } from '@nextcloud/initial-state'
 import { defineStore } from 'pinia'
 import Vue from 'vue'
-
-import { loadState } from '@nextcloud/initial-state'
-
 import { PRIVACY } from '../constants.ts'
 import BrowserStorage from '../services/BrowserStorage.js'
 import { getTalkConfig } from '../services/CapabilitiesManager.ts'
 import {
-	setReadStatusPrivacy,
-	setTypingStatusPrivacy,
-	setStartWithoutMedia,
 	setBlurVirtualBackground,
 	setConversationsListStyle,
+	setReadStatusPrivacy,
+	setStartWithoutMedia,
+	setTypingStatusPrivacy,
 } from '../services/settingsService.ts'
 
 /**
@@ -59,20 +57,20 @@ export const useSettingsStore = defineStore('settings', {
 			const storedValue = BrowserStorage.getItem('showMediaSettings_' + token)
 
 			switch (storedValue) {
-			case 'true': {
-				Vue.set(state.showMediaSettings, token, true)
-				return true
-			}
-			case 'false': {
-				Vue.set(state.showMediaSettings, token, false)
-				return false
-			}
-			case null:
-			default: {
-				BrowserStorage.setItem('showMediaSettings_' + token, 'true')
-				Vue.set(state.showMediaSettings, token, true)
-				return true
-			}
+				case 'true': {
+					Vue.set(state.showMediaSettings, token, true)
+					return true
+				}
+				case 'false': {
+					Vue.set(state.showMediaSettings, token, false)
+					return false
+				}
+				case null:
+				default: {
+					BrowserStorage.setItem('showMediaSettings_' + token, 'true')
+					Vue.set(state.showMediaSettings, token, true)
+					return true
+				}
 			}
 		},
 	},

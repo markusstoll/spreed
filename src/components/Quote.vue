@@ -12,7 +12,7 @@ components.
 	<component :is="component.tag"
 		:to="component.link"
 		class="quote"
-		:class="{'quote-own-message': isOwnMessageQuoted}"
+		:class="{ 'quote-own-message': isOwnMessageQuoted }"
 		@click.native="handleQuoteClick">
 		<div class="quote__main">
 			<div v-if="message.id"
@@ -55,20 +55,15 @@ components.
 </template>
 
 <script>
-import { computed, toRefs } from 'vue'
-
-import Close from 'vue-material-design-icons/Close.vue'
-import PencilIcon from 'vue-material-design-icons/Pencil.vue'
-
 import { t } from '@nextcloud/l10n'
-
+import { computed, toRefs } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcRichText from '@nextcloud/vue/components/NcRichText'
-
+import Close from 'vue-material-design-icons/Close.vue'
+import PencilIcon from 'vue-material-design-icons/Pencil.vue'
 import AvatarWrapper from './AvatarWrapper/AvatarWrapper.vue'
 import DefaultParameter from './MessagesList/MessagesGroup/Message/MessagePart/DefaultParameter.vue'
 import FilePreview from './MessagesList/MessagesGroup/Message/MessagePart/FilePreview.vue'
-
 import { useMessageInfo } from '../composables/useMessageInfo.js'
 import { ATTENDEE, AVATAR } from '../constants.ts'
 import { EventBus } from '../services/EventBus.ts'
@@ -92,11 +87,13 @@ export default {
 			type: Object,
 			required: true,
 		},
+
 		// Whether to show remove / cancel action
 		canCancel: {
 			type: Boolean,
 			default: false,
 		},
+
 		// Whether to show edit actions
 		editMessage: {
 			type: Boolean,
@@ -118,7 +115,7 @@ export default {
 
 		const actorInfo = computed(() => {
 			return [actorDisplayNameWithFallback.value, remoteServer.value, lastEditor.value]
-				.filter(value => value).join(' ')
+				.filter((value) => value).join(' ')
 		})
 
 		return {

@@ -15,6 +15,8 @@
     "Dismiss notification" : "Forsendi sciigon",
     "Accept" : "Akcepti",
     "Decline" : "Malakcepti",
+    "New message" : "Nova mesaĝo",
+    "Notification" : "Atentigo",
     "error" : "eraro",
     "Avatar image is not square" : "Avatarbildo ne estas kvadrata",
     "Andorra" : "Andoro",
@@ -278,7 +280,6 @@
     "Back" : "Antaŭen",
     "Cancel" : "Nuligi",
     "Loading …" : "Ŝargado...",
-    "No upcoming events" : "Neniuj venontaj eventoj",
     "From" : "De",
     "To" : "Al",
     "Calendar" : "Kalendaro",
@@ -305,6 +306,7 @@
     "Delete" : "Forigi",
     "Log content" : "Protokolenhavo",
     "Notifications" : "Sciigoj",
+    "Join" : "Aliĝi",
     "Log in" : "Ensaluti",
     "Remove from favorites" : "Forigi el pliŝataĵoj",
     "Add to favorites" : "Aldoni al pliŝataĵoj",
@@ -325,7 +327,6 @@
     "Send" : "Sendi",
     "Settings" : "Agordoj",
     "Anonymous poll" : "Enketo sennoma",
-    "Join" : "Aliĝi",
     "guest" : "gasto",
     "Add users or groups" : "Add users or groups",
     "Searching …" : "Serĉado ...",
@@ -336,6 +337,7 @@
     "Keyboard shortcuts" : "Fulmoklavoj",
     "Search" : "Serĉi",
     "Grid view" : "Krada vido",
+    "Keep" : "Konservi",
     "Select a region" : "Elekti regionon",
     "Submit" : "Sendi",
     "User" : "Uzanto",
@@ -355,8 +357,6 @@
     "iOS app" : "iOS-aplikaĵo",
     "__language_name__" : "Esperanto",
     "Tasks" : "Taskoj",
-    "Loading" : "Ŝargado",
-    "Close" : "Malfermi",
-    "Password protect" : "Protekti per pasvorto"
+    "Close" : "Malfermi"
 },"pluralForm" :"nplurals=2; plural=(n != 1);"
 }

@@ -5,6 +5,138 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 21.1.0 – 2025-06-05
+### Added
+- 📅 Improve handling of event conversations: filtered until close to the meeting, default expiration, tracking of event name and description
+- 👥 Allow adding participants to one-to-one calls creating a new conversation
+- 🍱 Add a Talk Dashboard
+- 📇 Enhance right sidebar in one-to-one conversations with information about the participant
+- 📲 Allow SIP direct dial-in to start a new conversation with an existing Nextcloud account
+- 🖌️ Allow to provide custom images for virtual backgrounds for branding or corporate appearance
+- 🔈 Allow selecting the output device in the media settings
+- ☎️ Administration setting to enable SIP dial-in by default for new conversations
+- 📅 Allow creating instant meetings
+- 🔏 Add sensitive conversations which don't show chat messages in sublines and notifications
+- 📲 Add option to mark a conversation as important to still receive notifications during "Do not disturb"
+
+### Changed
+- Update translations
+- Update dependencies
+
+## 21.1.0-rc.4 – 2025-05-29
+### Changed
+- Update translations
+- Update dependencies
+
+### Fixed
+- fix(dashboard): Add attachment icon and link to the events on the dashboard
+  [#15238](https://github.com/nextcloud/spreed/issues/15238)
+- fix(meetings): Don't show duplicates for the same event in the upcoming meetings
+  [#15252](https://github.com/nextcloud/spreed/issues/15252)
+- fix(meetings): Lock conversation when meeting is cancelled
+  [#15253](https://github.com/nextcloud/spreed/issues/15253)
+- fix(sip): Allow guests to use direct-dial-in even when starting calls is restricted
+  [#15234](https://github.com/nextcloud/spreed/issues/15234)
+
+## 21.1.0-rc.3 – 2025-05-22
+### Added
+- 📲 🙊 Add option to mark a conversation as sensitive or important
+  [#15175](https://github.com/nextcloud/spreed/issues/15175)
+
+### Changed
+- Update translations
+- Update dependencies
+
+### Fixed
+- fix(chat): Fix missing push notifications for chat messages in important conversations
+  [#15180](https://github.com/nextcloud/spreed/issues/15180)
+- fix(dashboard): Make sure all events of the upcoming week are considered
+  [#15177](https://github.com/nextcloud/spreed/issues/15177)
+- fix(conversations): Make the "Local time" reactive in one-to-one conversations
+  [#15130](https://github.com/nextcloud/spreed/issues/15130)
+- fix(conversations): Only show events in one-to-one conversations when upcoming recurrences contain both participants
+  [#15163](https://github.com/nextcloud/spreed/issues/15163)
+- fix(conversations): Fix background job for conversation retention
+  [#15185](https://github.com/nextcloud/spreed/issues/15185)
+- fix(calls): Don't break the session when the user accidentally navigated to the same conversation
+  [#15170](https://github.com/nextcloud/spreed/issues/15170)
+- fix(calls): Make output device selection work on Safari
+  [#15142](https://github.com/nextcloud/spreed/issues/15142)
+
+## 20.1.7 – 2025-05-22
+### Changed
+- Update translations
+- Update dependencies
+
+### Fixed
+- fix(call): Fix missing call notification when SIP dial-in is starting a call
+  [#14991](https://github.com/nextcloud/spreed/issues/14991)
+- fix(chat): Improve regex of todo-list handling also uppercase X
+  [#14903](https://github.com/nextcloud/spreed/issues/14903)
+- fix(one-to-one): Add the other participant when sharing a file in one-to-one
+  [#14850](https://github.com/nextcloud/spreed/issues/14850)
+- fix(performance): Fix unnecessary user_status requests from avatar component
+  [#14934](https://github.com/nextcloud/spreed/issues/14934)
+
+## 21.1.0-rc.2 – 2025-05-15
+### Added
+- 🍱 Add a Talk Dashboard
+  [#15094](https://github.com/nextcloud/spreed/issues/15094)
+- 📅 Allow creating instant meetings
+  [#15073](https://github.com/nextcloud/spreed/issues/15073)
+- 🤝 Show mutual events in the sidebar of one-to-one
+  [#15097](https://github.com/nextcloud/spreed/issues/15097)
+- 🙊 Add sensitive conversations which don't show a chat messages in sublines and notifications
+  [#15098](https://github.com/nextcloud/spreed/issues/15098)
+
+### Changed
+- Update translations
+- Update dependencies
+
+### Fixed
+- Send call notification to newly added participants
+  [#15090](https://github.com/nextcloud/spreed/issues/15090)
+- Fix issues with calendar event integration
+  [#15078](https://github.com/nextcloud/spreed/issues/15078)
+  [#15080](https://github.com/nextcloud/spreed/issues/15080)
+
+## 21.1.0-rc.1 – 2025-05-09
+### Added
+- 📅 Improve handling of event conversations: filtered until close to the meeting, default expiration, tracking of event name and description
+  [#14401](https://github.com/nextcloud/spreed/issues/14401)
+- 👥 Allow adding participants to one-to-one calls creating a new conversation
+  [#14398](https://github.com/nextcloud/spreed/issues/14398)
+- 📇 Enhance right sidebar in one-to-one conversations with information about the participant
+  [#14411](https://github.com/nextcloud/spreed/issues/14411)
+- 📲 Allow SIP direct dial-in to start a new conversation with an existing Nextcloud account
+  [#14992](https://github.com/nextcloud/spreed/issues/14992)
+- 🖌️ Allow to provide custom images for virtual backgrounds for branding or corporate appearance
+  [#14987](https://github.com/nextcloud/spreed/issues/14987)
+- 🔈 Allow selecting the output device in the media settings
+  [#15037](https://github.com/nextcloud/spreed/issues/15037)
+- ☎️ Administration setting to allow to enable SIP dial-in by default for new conversations
+  [#14940](https://github.com/nextcloud/spreed/issues/14940)
+
+### Changed
+- Update translations
+- Update dependencies
+
+## 21.0.4 – 2025-04-28
+### Changed
+- Update translations
+- Update dependencies
+
+### Fixed
+- fix(schedule-meeting): Make sure the other user is in one-to-one when scheduling
+  [#14973](https://github.com/nextcloud/spreed/issues/14973)
+  [#14967](https://github.com/nextcloud/spreed/issues/14967)
+- fix(schedule-meeting): Improve dialog when scheduling in one-to-one
+  [#14923](https://github.com/nextcloud/spreed/issues/14923)
+- fix(schedule-meeting): Hide schedule meeting from former one-to-one
+  [#14923](https://github.com/nextcloud/spreed/issues/14923)
+- fix(performance): Fix unnecessary user_status requests from avatar component
+  [#14932](https://github.com/nextcloud/spreed/issues/14932)
+
 ## 21.0.3 – 2025-04-17
 ### Changed
 - Update translations

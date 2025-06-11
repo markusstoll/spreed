@@ -86,24 +86,21 @@
 </template>
 
 <script>
+import { showError } from '@nextcloud/dialogs'
+import { emit } from '@nextcloud/event-bus'
+import { loadState } from '@nextcloud/initial-state'
+import { t } from '@nextcloud/l10n'
+import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
+import NcActionButton from '@nextcloud/vue/components/NcActionButton'
+import NcActions from '@nextcloud/vue/components/NcActions'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import IconArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import IconPhone from 'vue-material-design-icons/Phone.vue'
 import IconPhoneDial from 'vue-material-design-icons/PhoneDial.vue'
 import IconPhoneHangup from 'vue-material-design-icons/PhoneHangup.vue'
 import IconPhoneOff from 'vue-material-design-icons/PhoneOff.vue'
 import IconPhoneOutline from 'vue-material-design-icons/PhoneOutline.vue'
-
-import { showError } from '@nextcloud/dialogs'
-import { emit } from '@nextcloud/event-bus'
-import { loadState } from '@nextcloud/initial-state'
-import { t } from '@nextcloud/l10n'
-
-import NcActionButton from '@nextcloud/vue/components/NcActionButton'
-import NcActions from '@nextcloud/vue/components/NcActions'
-import NcButton from '@nextcloud/vue/components/NcButton'
-import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
-import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
-
 import { useIsInCall } from '../../composables/useIsInCall.js'
 import { ATTENDEE, CALL, CONVERSATION, PARTICIPANT } from '../../constants.ts'
 import { callSIPDialOut } from '../../services/callsService.js'
@@ -213,20 +210,26 @@ export default {
 		token() {
 			return this.$store.getters.getToken()
 		},
+
 		isNextcloudTalkHashDirty() {
 			return this.talkHashStore.isNextcloudTalkHashDirty
 				|| this.talkHashStore.isNextcloudTalkProxyHashDirty[this.token]
 		},
+
 		conversation() {
 			return this.$store.getters.conversation(this.token) || this.$store.getters.dummyConversation
 		},
+
 		showButtonText() {
 			return !this.hideText && (!this.isMobile || !this.shrinkOnMobile)
 		},
+
 		showRecordingWarning() {
-			return [CALL.RECORDING.VIDEO_STARTING, CALL.RECORDING.AUDIO_STARTING,
-				CALL.RECORDING.VIDEO, CALL.RECORDING.AUDIO].includes(this.conversation.callRecording)
-			|| this.conversation.recordingConsent === CALL.RECORDING_CONSENT.ENABLED
+			return [CALL.RECORDING.VIDEO_STARTING,
+				CALL.RECORDING.AUDIO_STARTING,
+				CALL.RECORDING.VIDEO,
+				CALL.RECORDING.AUDIO].includes(this.conversation.callRecording)
+				|| this.conversation.recordingConsent === CALL.RECORDING_CONSENT.ENABLED
 		},
 
 		showMediaSettings() {
@@ -239,9 +242,9 @@ export default {
 
 		canEndForAll() {
 			return (this.participantType === PARTICIPANT.TYPE.OWNER
-					|| this.participantType === PARTICIPANT.TYPE.MODERATOR
-					|| this.participantType === PARTICIPANT.TYPE.GUEST_MODERATOR)
-				&& !this.isBreakoutRoom
+				|| this.participantType === PARTICIPANT.TYPE.MODERATOR
+				|| this.participantType === PARTICIPANT.TYPE.GUEST_MODERATOR)
+			&& !this.isBreakoutRoom
 		},
 
 		hasCall() {
@@ -340,7 +343,10 @@ export default {
 		},
 
 		isPhoneRoom() {
-			return this.conversation.objectType === CONVERSATION.OBJECT_TYPE.PHONE
+			return this.conversation.objectId === CONVERSATION.OBJECT_ID.PHONE_OUTGOING
+				&& (this.conversation.objectType === CONVERSATION.OBJECT_TYPE.PHONE_LEGACY
+					|| this.conversation.objectType === CONVERSATION.OBJECT_TYPE.PHONE_PERSISTENT
+					|| this.conversation.objectType === CONVERSATION.OBJECT_TYPE.PHONE_TEMPORARY)
 		},
 
 		isInLobby() {
@@ -356,7 +362,7 @@ export default {
 		token(newValue, oldValue) {
 			this.callViewStore.resetCallHasJustEnded()
 			this.talkHashStore.resetTalkProxyHashDirty(oldValue)
-		}
+		},
 	},
 
 	mounted() {
@@ -405,9 +411,11 @@ export default {
 
 			if (this.isPhoneRoom) {
 				const attendeeId = this.$store.getters.participantsList(this.token)
-					.find(participant => participant.actorType === ATTENDEE.ACTOR_TYPE.PHONES)
+					.find((participant) => participant.actorType === ATTENDEE.ACTOR_TYPE.PHONES)
 					?.attendeeId
-				this.dialOutPhoneNumber(attendeeId)
+				if (attendeeId) {
+					this.dialOutPhoneNumber(attendeeId)
+				}
 			}
 		},
 
@@ -464,7 +472,7 @@ export default {
 			} catch (error) {
 				if (error?.response?.data?.ocs?.data?.message) {
 					showError(t('spreed', 'Phone number could not be called: {error}', {
-						error: error?.response?.data?.ocs?.data?.message
+						error: error?.response?.data?.ocs?.data?.message,
 					}))
 				} else {
 					console.error(error)
